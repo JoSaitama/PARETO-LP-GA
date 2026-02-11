@@ -25,6 +25,7 @@ def main():
     p.add_argument("--num_workers", type=int, default=2)
     p.add_argument("--data_root", type=str, required=True)   # e.g. /content/drive/MyDrive/cifar10_data
     p.add_argument("--out_dir", type=str, required=True)     # e.g. /content/drive/MyDrive/pareto_influence_outputs/baseline_...
+    p.add_argument("--aug", type=str, default="train_aug", choices=["train_aug", "noaug"])
     args = p.parse_args()
 
     set_seed(args.seed)
@@ -41,6 +42,7 @@ def main():
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         pin_memory=use_amp,
+        aug=args.aug, 
     )
     train_loader, test_loader = get_cifar10_loaders(data_cfg)
 
