@@ -5,7 +5,8 @@ from typing import Dict, Any
 
 import torch
 import torch.nn as nn
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast
+from torch.cuda.amp import GradScaler
 
 from src.utils.metrics import AccMeter
 
@@ -34,7 +35,7 @@ def train_one_epoch(model: nn.Module, loader, optimizer, cfg: TrainConfig, scale
 
         optimizer.zero_grad(set_to_none=True)
 
-        with autocast(enabled=cfg.use_amp):
+        with autocast(device_type=cfg.device, enabled=cfg.use_amp):
             logits = model(x)
             loss = loss_fn(logits, y)
 
