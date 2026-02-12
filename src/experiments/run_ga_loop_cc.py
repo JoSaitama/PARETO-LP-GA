@@ -352,13 +352,23 @@ def main():
 
         
         
-        feasible = bool(np.all(delta[t_arr] > eps))
+        # feasible = bool(np.all(delta[t_arr] > eps))
         # fit = float(delta[t_arr].mean() + neg_sum + penalty)
-        base = float(delta[t_arr].mean() + neg_sum)  # only meaningful when feasible
+
+        feasible = bool(np.all(delta[t_arr] > eps))
+
+        base = float(delta[t_arr].mean() + neg_sum)  # meaningful when feasible
+        
+        # how far from feasibility (0 is best). shortfall <= 0
+        shortfall_sum = float(shortfall.sum())       # <= 0
+        violation = -shortfall_sum                   # >= 0 (bigger = worse)
+        
         if feasible:
-            fit = 1000.0 + base          # big bonus so feasible always dominates
+            fit = 1000.0 + base
         else:
-            fit = -1000.0 + penalty      # penalty is <=0, more negative => worse
+            # prefer smaller violation; tie-breaker: less harm to non-target
+            fit = -1000.0 - violat
+
 
 
         worst_non_t = float(delta[non_t].min()) if len(non_t) else 0.0
