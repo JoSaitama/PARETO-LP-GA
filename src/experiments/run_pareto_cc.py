@@ -127,6 +127,24 @@ def main():
             neg = delta[non_t][delta[non_t] < 0].sum() if len(non_t) else 0.0
             fit = float(delta[targets].mean() + neg)
 
+        # ===== DEBUG PRINT (new) =====
+        feasible = not np.any(delta[targets] <= 0)
+        non_t = [k for k in range(K) if k not in targets]
+        neg = delta[non_t][delta[non_t] < 0].sum() if len(non_t) else 0.0
+        
+        worst_non_t = delta[non_t].min() if len(non_t) else 0.0
+        
+        print(
+            f"[cand {i}] "
+            f"feasible={feasible} "
+            f"fit={fit:.4f} "
+            f"delta_targets={delta[targets]} "
+            f"mean_target={delta[targets].mean():.4f} "
+            f"neg_sum={neg:.4f} "
+            f"worst_non_target={worst_non_t:.4f}"
+        )
+
+        
         rec = {
             "cand": i,
             "alpha": alpha.tolist(),
