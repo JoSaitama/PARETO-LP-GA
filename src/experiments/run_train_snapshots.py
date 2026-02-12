@@ -79,7 +79,7 @@ def main():
         }
         history.append(row)
 
-        # best checkpoint
+        # best checkpoint (save full training state for reproducibility)
         if te["acc"] > best_acc:
             best_acc = float(te["acc"])
             torch.save(
@@ -87,21 +87,35 @@ def main():
                     "epoch": epoch,
                     "model_state": model.state_dict(),
                     "optimizer_state": optimizer.state_dict(),
+                    "scheduler_state": scheduler.state_dict(),
+                    "scaler_state": scaler.state_dict() if cfg.use_amp else None,
                     "best_acc": best_acc,
                     "cfg": cfg.__dict__,
-                    "data_cfg": data_cfg.__dict__,
+                    "args": vars(args),  # records save_epochs/train_aug/data_root/etc.
                 },
                 os.path.join(ckpt_dir, "best.pt"),
             )
-        
+
         
         if epoch == 1 or epoch % 5 == 0 or epoch == cfg.epochs:
             print(f"[{epoch:03d}/{cfg.epochs}] test_acc={row['test_acc']:.2f} time={row['sec']:.1f}s")
 
         if epoch in save_epochs:
             path = os.path.join(ckpt_dir, f"epoch_{epoch:03d}.pt")
-            torch.save({"epoch": epoch, "model_state": model.state_dict(), "cfg": cfg.__dict__}, path)
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state": model.state_dict(),
+                    "optimizer_state": optimizer.state_dict(),
+                    "scheduler_state": scheduler.state_dict(),
+                    "scaler_state": scaler.state_dict() if cfg.use_amp else None,
+                    "cfg": cfg.__dict__,
+                    "args": vars(args),
+                },
+                path,
+            )
             print("Saved ckpt:", path)
+
 
     save_json(os.path.join(log_dir, "history.json"), {"history": history})
     print("Out:", args.out_dir)
