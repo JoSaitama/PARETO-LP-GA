@@ -256,9 +256,14 @@ def main():
         for i, key in enumerate(row_names):
             if mode not in key:
                 continue
-            t = int(key.split("_")[0][1:])      # target class id
-            x = float(cum[i, t])                # cum influence on target dimension
-            y = float(acc_change[i, t])         # delta acc on target class
+    
+            # key = "t2_beneficial" -> target = 2
+            t = int(key.split("_")[0][1:])
+    
+            # 只看 target 维度（最关键）
+            x = float(cum[i, t])          # cum influence on target dimension
+            y = float(acc_change[i, t])   # delta acc on target class
+    
             if np.isfinite(x) and np.isfinite(y):
                 xs.append(x); ys.append(y)
     
@@ -267,6 +272,7 @@ def main():
             return
     
         rho = spearmanr_approx(np.array(xs), np.array(ys))
+    
         plt.figure(figsize=(6, 6))
         plt.scatter(xs, ys, s=35)
         plt.axhline(0, linewidth=1)
@@ -277,13 +283,16 @@ def main():
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, save_name), dpi=300)
         plt.show()
+    
         print(f"{mode} Spearman approx:", rho)
+    
     
     if cum is not None:
         plot_scatter_for_mode("beneficial", "scatter_target_beneficial.png")
         plot_scatter_for_mode("detrimental", "scatter_target_detrimental.png")
     else:
         print("cum not available; skip scatter.")
+
 
 
 
