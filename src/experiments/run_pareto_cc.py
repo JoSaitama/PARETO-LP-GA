@@ -118,19 +118,39 @@ def main():
         delta = after_pc - orig_pc
 
         # CC fitness: targets must improve relative to orig e+1
+        # hard threshold
         # if np.any(delta[targets] <= 0):
-        eps = args.eps  # or 1e-2
-        if np.any(delta[targets] <= eps):
-            fit = -1e9
-        else:
-            non_t = [k for k in range(K) if k not in targets]
-            neg = delta[non_t][delta[non_t] < 0].sum() if len(non_t) else 0.0
-            fit = float(delta[targets].mean() + neg)
+        # eps = args.eps  # or 1e-2
+        # if np.any(delta[targets] <= eps):
+        #     fit = -1e9
+        # else:
+        #     non_t = [k for k in range(K) if k not in targets]
+        #     neg = delta[non_t][delta[non_t] < 0].sum() if len(non_t) else 0.0
+        #     fit = float(delta[targets].mean() + neg)
 
-        # ===== DEBUG PRINT (new) =====
-        feasible = not np.any(delta[targets] <= 0)
-        non_t = [k for k in range(K) if k not in targets]
+        # soft threshold
+        eps = args.eps
+        t = np.array(targets, dtype=int)
+        
+        # non-target penalty (same as before)
+        non_t = [k for k in range(K) if k not in t]
         neg = delta[non_t][delta[non_t] < 0].sum() if len(non_t) else 0.0
+        
+        # soft constraint: penalize target shortfall below eps
+        shortfall = np.minimum(delta[t] - eps, 0.0)          # each <= 0
+        penalty = args.lambda_shortfall * float(shortfall.sum())  # negative
+        
+        fit = float(delta[t].mean() + neg + penalty)
+        
+        # keep a feasibility flag for reporting
+        feasible = bool(np.all(delta[t] > eps))
+
+        
+        
+        # ===== DEBUG PRINT (new) =====
+        # feasible = not np.any(delta[targets] <= 0)
+        # non_t = [k for k in range(K) if k not in targets]
+        # neg = delta[non_t][delta[non_t] < 0].sum() if len(non_t) else 0.0
         
         worst_non_t = delta[non_t].min() if len(non_t) else 0.0
         
