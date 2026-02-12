@@ -119,6 +119,7 @@ def _plot_heatmap(mat, row_names, title, save_path, vlim=None):
     size = max(6, 0.6 * max(K, R))
     plt.figure(figsize=(size, size))
     im = plt.imshow(m, aspect="equal", cmap="RdBu_r", norm=norm)  # RdBu_r: negative->blue, positive->red
+    plt.gca().set_aspect('equal', adjustable='box')
     
     # plt.figure(figsize=(10, max(4, 0.35 * len(row_names))))
     # im = plt.imshow(m, aspect="auto", cmap="RdBu_r", norm=norm)  
