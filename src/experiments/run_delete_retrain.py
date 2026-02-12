@@ -15,7 +15,8 @@ import os
 import numpy as np
 import torch
 import torch.optim as optim
-from torch.cuda.amp import GradScaler
+# from torch.cuda.amp import GradScaler
+from torch.amp import GradScaler
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
 
@@ -66,8 +67,9 @@ def retrain_once(
 
     optimizer = optim.SGD(model.parameters(), lr=cfg.lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
-    scaler = GradScaler(enabled=cfg.use_amp)
-
+    # scaler = GradScaler(enabled=cfg.use_amp)
+    scaler = GradScaler("cuda", enabled=cfg.use_amp)
+    
     best = -1.0
     best_state = None
 
