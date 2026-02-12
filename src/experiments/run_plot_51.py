@@ -8,6 +8,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 
+def compute_cum_from_ptrain(inf_dir: str, row_names: list[str], K: int = 10) -> np.ndarray:
+    """
+    Recompute cum_influence[row, k] = sum_{i in removed(row)} P_train[i, k]
+    using P_train.npy + top_lists/class{t}_{mode}.npy
+
+    inf_dir: directory that contains P_train.npy and top_lists/.
+            If your influence dir is different from out_dir, pass it via arg.
+    """
+    P_path = os.path.join(inf_dir, "P_train.npy")
+    top_dir = os.path.join(inf_dir, "top_lists")
+    if not os.path.exists(P_path):
+        raise FileNotFoundError(f"Missing {P_path}")
+    if not os.path.isdir(top_dir):
+        raise FileNotFoundError(f"Missing {top_dir}")
+
+    P = np.load(P_path)  # [N, K]
+    cum = np.zeros((len(row_names), K), dtype=np.float32)
+
+    for r, key in enumerate(row_names):
+        # key looks like "t2_beneficial"
+        if not key.startswith("t"):
+            continue
+        t = int(key.split("_")[0][1:])  # between 't' and '_'
+        mode = "beneficial" if "beneficial" in key else "detrimental"
+        idx_path = os.path.join(top_dir, f"class{t}_{mode}.npy")
+        if not os.path.exists(idx_path):
+            # if missing, keep zeros
+            continue
+        removed = np.load(idx_path)
+        cum[r] = P[removed].sum(axis=0)
+    return cum
+
 
 def spearmanr_approx(x, y) -> float:
     x = np.asarray(x); y = np.asarray(y)
@@ -137,6 +169,8 @@ def main():
     p.add_argument("--out_dir", type=str, required=True)
     p.add_argument("--K", type=int, default=10)
     p.add_argument("--only", type=str, default="all", choices=["all", "beneficial", "detrimental"])
+    p.add_argument("--inf_dir", type=str, default="", help="Directory containing P_train.npy and top_lists/. If empty, use out_dir.")
+
     args = p.parse_args()
 
     out_dir = args.out_dir
