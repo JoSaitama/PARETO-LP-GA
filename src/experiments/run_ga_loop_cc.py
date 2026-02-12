@@ -117,13 +117,15 @@ def pick_cc_targets_from_ckpts(
 
 
 def _make_deterministic():
-    # Make evaluation more repeatable across GA generations
+    # stable enough for GA ranking; avoids cuBLAS determinism crash on Colab
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    try:
-        torch.use_deterministic_algorithms(True)
-    except Exception:
-        pass
+    # DO NOT call torch.use_deterministic_algorithms(True) on Colab unless
+    # you set CUBLAS_WORKSPACE_CONFIG before importing torch.
+    # try:
+    #     torch.use_deterministic_algorithms(True)
+    # except Exception:
+    #     pass
 
 
 def main():
