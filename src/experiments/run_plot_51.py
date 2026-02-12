@@ -183,17 +183,13 @@ def main():
     # cum = _load_cum_if_available(out_dir, row_names, K=K)
 
     inf_dir = args.inf_dir.strip() if args.inf_dir.strip() else out_dir
-    
-    # 1) 优先：用 P_train + top_lists 重算 cum（最可靠）
     try:
         cum = compute_cum_from_ptrain(inf_dir, row_names, K=K)
         print("cum computed from:", inf_dir)
     except Exception as e:
         print("Failed to compute cum from P_train/top_lists, fallback to cum_influence.npy. Reason:", repr(e))
-        # 2) fallback：读 cum_influence.npy（如果存在并且对齐）
         cum = _load_cum_if_available(out_dir, row_names, K=K)
     
-    # 3) 如果仍然没有，才是 None
     if cum is None:
         print("cum is None (no P_train/top_lists and no aligned cum_influence.npy).")
 
@@ -235,25 +231,60 @@ def main():
         do_block("detrimental", idx_det)
 
     # scatter & spearman (use valid entries only)
+    # if cum is not None:
+    #     xs = cum.reshape(-1)
+    #     ys = acc_change.reshape(-1)
+    #     m = np.isfinite(xs) & np.isfinite(ys)
+    #     if m.any():
+    #         rho = spearmanr_approx(xs[m], ys[m])
+    #         plt.figure()
+    #         plt.scatter(xs[m], ys[m], s=10)
+    #         plt.title(f"Scatter: cumulative influence vs acc change (Spearman ~ {rho:.3f})")
+    #         plt.xlabel("Cumulative influence")
+    #         plt.ylabel("Accuracy change")
+    #         plt.tight_layout()
+    #         plt.savefig(os.path.join(out_dir, "scatter_spearman.png"), dpi=200)
+    #         plt.show()
+    #         print("Spearman approx:", rho)
+    #     else:
+    #         print("No finite points for scatter/spearman.")
+    # else:
+    #     print("cum_influence.npy not available/aligned; skip scatter/spearman.")
+
+    def plot_scatter_for_mode(mode: str, save_name: str):
+        xs, ys = [], []
+        for i, key in enumerate(row_names):
+            if mode not in key:
+                continue
+            t = int(key.split("_")[0][1:])      # target class id
+            x = float(cum[i, t])                # cum influence on target dimension
+            y = float(acc_change[i, t])         # delta acc on target class
+            if np.isfinite(x) and np.isfinite(y):
+                xs.append(x); ys.append(y)
+    
+        if len(xs) < 3:
+            print(f"Not enough points for scatter ({mode}).")
+            return
+    
+        rho = spearmanr_approx(np.array(xs), np.array(ys))
+        plt.figure(figsize=(6, 6))
+        plt.scatter(xs, ys, s=35)
+        plt.axhline(0, linewidth=1)
+        plt.axvline(0, linewidth=1)
+        plt.title(f"{mode}: cum(target) vs delta(target)  (Spearman≈{rho:.3f})")
+        plt.xlabel("cum influence on target dimension")
+        plt.ylabel("accuracy change on target class")
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, save_name), dpi=300)
+        plt.show()
+        print(f"{mode} Spearman approx:", rho)
+    
     if cum is not None:
-        xs = cum.reshape(-1)
-        ys = acc_change.reshape(-1)
-        m = np.isfinite(xs) & np.isfinite(ys)
-        if m.any():
-            rho = spearmanr_approx(xs[m], ys[m])
-            plt.figure()
-            plt.scatter(xs[m], ys[m], s=10)
-            plt.title(f"Scatter: cumulative influence vs acc change (Spearman ~ {rho:.3f})")
-            plt.xlabel("Cumulative influence")
-            plt.ylabel("Accuracy change")
-            plt.tight_layout()
-            plt.savefig(os.path.join(out_dir, "scatter_spearman.png"), dpi=200)
-            plt.show()
-            print("Spearman approx:", rho)
-        else:
-            print("No finite points for scatter/spearman.")
+        plot_scatter_for_mode("beneficial", "scatter_target_beneficial.png")
+        plot_scatter_for_mode("detrimental", "scatter_target_detrimental.png")
     else:
-        print("cum_influence.npy not available/aligned; skip scatter/spearman.")
+        print("cum not available; skip scatter.")
+
 
 
 if __name__ == "__main__":
