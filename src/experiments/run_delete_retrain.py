@@ -122,6 +122,7 @@ def main():
 
     # retrain 是否 no-aug（默认 1：你要的 no-aug 全流程更一致）
     p.add_argument("--noaug", type=int, default=1, help="1: retrain uses no-aug; 0: uses train aug")
+    p.add_argument("--print_every", type=int, default=10)
 
     args = p.parse_args()
 
@@ -238,7 +239,7 @@ def main():
                 batch_size=args.batch_size,
                 num_workers=args.num_workers,
                 init_state_dict=init_state,
-                print_every=10,
+                print_every=args.print_every,
             )
 
             new_acc = out["per_class_acc"]
