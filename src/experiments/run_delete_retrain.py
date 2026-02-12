@@ -82,7 +82,8 @@ def retrain_once(
             best = float(te["acc"])
             best_state = {k: v.cpu() for k, v in model.state_dict().items()}
 
-        if ep in (1, max(1, epochs // 2), epochs):
+        # if ep in (1, max(1, epochs // 2), epochs):
+        if ep == 1 or ep % 10 == 0 or ep == epochs:
             print(f"  ep {ep:02d}/{epochs} test_acc={te['acc']:.2f} best={best:.2f}")
 
     model.load_state_dict(best_state)
