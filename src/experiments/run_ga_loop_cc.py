@@ -114,6 +114,37 @@ def _mutate(
     return _project_alpha(child, alpha_project)
 
 
+def pick_cc_targets_from_ckpts(
+    model_e: torch.nn.Module,
+    model_e1: torch.nn.Module,
+    test_loader: DataLoader,
+    cfg: WeightedTrainConfig,
+    top_n: int = 2,
+) -> Tuple[List[int], np.ndarray, np.ndarray, np.ndarray]:
+    """
+    CC targets = classes with largest accuracy deterioration from epoch e to epoch e+1.
+
+    Returns:
+      targets: list[int] of length top_n
+      acc_e: per-class acc at epoch e (shape K)
+      acc_e1: per-class acc at epoch e+1 (shape K)
+      delta: acc_e1 - acc_e (shape K)
+    """
+    res_e = evaluate_indexed(model_e, test_loader, cfg)
+    res_e1 = evaluate_indexed(model_e1, test_loader, cfg)
+
+    acc_e = np.array(res_e["per_class_acc"], dtype=np.float32)
+    acc_e1 = np.array(res_e1["per_class_acc"], dtype=np.float32)
+    delta = acc_e1 - acc_e
+
+    # most negative deltas are worst deteriorations
+    order = np.argsort(delta)  # ascending => most negative first
+    top_n = int(max(1, min(top_n, acc_e.size)))
+    targets = [int(i) for i in order[:top_n]]
+
+    return targets, acc_e, acc_e1, delta
+
+
 def main():
     p = argparse.ArgumentParser()
 
@@ -138,6 +169,14 @@ def main():
     p.add_argument("--opt_steps", type=int, default=400)
     p.add_argument("--lambda_shortfall", type=float, default=50.0)
 
+    p.add_argument(
+        "--auto_targets",
+        type=int,
+        default=0,
+        help="If >0, ignore --targets and automatically pick CC targets as top-N most deteriorated classes from ckpt_e -> ckpt_orig_e1.",
+    )
+
+    
     # ===== GA params =====
     p.add_argument("--pop", type=int, default=30)
     p.add_argument("--gens", type=int, default=15)
@@ -227,6 +266,24 @@ def main():
     model_e.load_state_dict(ckpt_e["model_state"])
     model_orig.load_state_dict(ckpt_o["model_state"])
 
+    # ===== optionally auto-pick CC targets based on deterioration e -> e+1 =====
+    if args.auto_targets and int(args.auto_targets) > 0:
+        auto_n = int(args.auto_targets)
+        targets, acc_e, acc_e1, delta_e1_minus_e = pick_cc_targets_from_ckpts(
+            model_e=model_e,
+            model_e1=model_orig,
+            test_loader=test_loader,
+            cfg=cfg,
+            top_n=auto_n,
+        )
+        print("\n[AutoTargets] Picked CC targets as most deteriorated classes (e -> e+1):", targets)
+        print("[AutoTargets] epoch-e per-class:", acc_e)
+        print("[AutoTargets] epoch-(e+1) per-class:", acc_e1)
+        print("[AutoTargets] delta (e+1 - e):", delta_e1_minus_e)
+    else:
+        targets = [int(x) for x in args.targets.split(",") if x.strip() != ""]
+
+    
     orig = evaluate_indexed(model_orig, test_loader, cfg)
     orig_pc = np.array(orig["per_class_acc"], dtype=np.float32)
 
