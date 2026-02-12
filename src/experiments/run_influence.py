@@ -128,8 +128,8 @@ def main():
         scores = P[:, k].astype(np.float64)
 
         # beneficial = top (largest), detrimental = bottom (smallest)
-        beneficial = np.argsort(-scores)[:m]
-        detrimental = np.argsort(scores)[:m]
+        beneficial = np.argsort(scores)[:m]
+        detrimental = np.argsort(-scores)[:m]
 
         np.save(os.path.join(top_dir, f"class{k}_beneficial.npy"), beneficial)
         np.save(os.path.join(top_dir, f"class{k}_detrimental.npy"), detrimental)
