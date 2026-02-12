@@ -154,7 +154,9 @@ def main():
     p.add_argument("--ckpt_e", type=str, required=True)          # epoch e ckpt, e.g. epoch_020.pt
     p.add_argument("--ckpt_orig_e1", type=str, required=True)    # original epoch e+1 ckpt, e.g. epoch_021.pt
     p.add_argument("--P_train", type=str, required=True)         # influence matrix from epoch e model
-    p.add_argument("--targets", type=str, required=True)         # e.g. "3" or "2,3"
+    # p.add_argument("--targets", type=str, required=True)         # e.g. "3" or "2,3"
+    p.add_argument("--targets", type=str, default="")
+
     p.add_argument("--out_dir", type=str, required=True)
 
     p.add_argument("--train_aug", type=int, default=0)
