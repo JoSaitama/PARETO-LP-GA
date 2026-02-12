@@ -356,7 +356,7 @@ def main():
         # fit = float(delta[t_arr].mean() + neg_sum + penalty)
 
         feasible = bool(np.all(delta[t_arr] > eps))
-
+        
         base = float(delta[t_arr].mean() + neg_sum)  # meaningful when feasible
         
         # how far from feasibility (0 is best). shortfall <= 0
@@ -367,7 +367,8 @@ def main():
             fit = 1000.0 + base
         else:
             # prefer smaller violation; tie-breaker: less harm to non-target
-            fit = -1000.0 - violation
+            fit = -1000.0 - violation + 0.01 * float(neg_sum)
+        
 
 
 
