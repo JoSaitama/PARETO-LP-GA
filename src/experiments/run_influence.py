@@ -135,6 +135,8 @@ def main():
         np.save(os.path.join(top_dir, f"class{k}_detrimental.npy"), detrimental)
 
     print("\n=== Influence DONE ===")
+    print("N_train:", len(train_ds), "N_test:", len(test_ds))
+    print("P_train shape:", P_train.shape)
     print("device:", device)
     print("ckpt:", ckpt)
     print("data_root:", args.data_root)
@@ -143,6 +145,7 @@ def main():
     print("Saved:", P_path)
     print("Saved:", meta_path)
     print("Saved top lists to:", top_dir)
+
 
 
 if __name__ == "__main__":
