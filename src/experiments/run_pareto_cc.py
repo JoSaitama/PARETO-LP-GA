@@ -75,7 +75,7 @@ def main():
                              num_workers=args.num_workers, pin_memory=use_amp)
 
     cfg = WeightedTrainConfig(epochs=1, device=device, num_classes=10, use_amp=use_amp,
-                              lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)0.9)
+                              lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
 
     # load epoch e and orig epoch e+1
     model_e = ResNet9(num_classes=10).to(device)
