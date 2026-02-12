@@ -207,9 +207,9 @@ def main():
 
     ensure_dir(args.out_dir)
 
-    targets = [int(x) for x in args.targets.split(",") if x.strip() != ""]
-    if len(targets) == 0:
-        raise ValueError("targets is empty. Use --targets like '2,3'.")
+    # targets = [int(x) for x in args.targets.split(",") if x.strip() != ""]
+    # if len(targets) == 0:
+    #     raise ValueError("targets is empty. Use --targets like '2,3'.")
 
     K = 10  # CIFAR-10
 
@@ -268,8 +268,8 @@ def main():
     model_e.load_state_dict(ckpt_e["model_state"])
     model_orig.load_state_dict(ckpt_o["model_state"])
 
-    # ===== optionally auto-pick CC targets based on deterioration e -> e+1 =====
-    if args.auto_targets and int(args.auto_targets) > 0:
+    # ===== decide CC targets =====
+    if int(args.auto_targets) > 0:
         auto_n = int(args.auto_targets)
         targets, acc_e, acc_e1, delta_e1_minus_e = pick_cc_targets_from_ckpts(
             model_e=model_e,
@@ -284,6 +284,9 @@ def main():
         print("[AutoTargets] delta (e+1 - e):", delta_e1_minus_e)
     else:
         targets = [int(x) for x in args.targets.split(",") if x.strip() != ""]
+        if len(targets) == 0:
+            raise ValueError("targets is empty. Use --targets like '2,3', or set --auto_targets > 0.")
+
 
     
     orig = evaluate_indexed(model_orig, test_loader, cfg)
