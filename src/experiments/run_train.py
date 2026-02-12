@@ -8,7 +8,8 @@ from typing import Any, Dict, List
 
 import torch
 import torch.optim as optim
-from torch.cuda.amp import GradScaler
+# from torch.cuda.amp import GradScaler
+from torch.amp import GradScaler
 
 from src.utils.seed import set_seed
 from src.utils.io import ensure_dir, save_json
@@ -88,7 +89,8 @@ def main():
         weight_decay=cfg.weight_decay,
     )
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
-    scaler = GradScaler(enabled=cfg.use_amp)
+    scaler = GradScaler("cuda", enabled=cfg.use_amp)
+    # scaler = GradScaler(enabled=cfg.use_amp)
 
     best_acc = -1.0
     history: List[Dict[str, Any]] = []
