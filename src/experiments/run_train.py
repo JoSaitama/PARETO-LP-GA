@@ -22,16 +22,16 @@ from src.experiments.parse_file import add_common_args, exp_dirs
 def main():
     p = argparse.ArgumentParser()
 
-    # 1) 公共默认参数（不想每次都写的）
+    # 1) common args
     # includes: --data_root --output_root --seed --batch_size --num_workers --epochs --aug
     add_common_args(p)
 
-    # 2) 你真正会经常调的训练超参（这里给默认值，但可随时覆盖）
+    # 2) args for used a lot
     p.add_argument("--lr", type=float, default=0.1)
     p.add_argument("--weight_decay", type=float, default=5e-4)
     p.add_argument("--momentum", type=float, default=0.9)
 
-    # 3) 输出目录：不再 required；不传就自动生成
+    # 3) outdir
     p.add_argument(
         "--out_dir",
         type=str,
@@ -39,13 +39,13 @@ def main():
         help="Optional. If empty, will auto-generate under output_root.",
     )
 
-    # 4) 额外：打印频率（可选）
+    # 4) print for checking checkpoints status
     p.add_argument("--print_every", type=int, default=10)
 
     args = p.parse_args()
 
     # ===== paths =====
-    # 如果没传 out_dir，就自动用标准命名
+    # auto outdir
     dirs = exp_dirs(args.output_root, "resnet9_cifar10", args.seed)
     out_dir = args.out_dir or dirs["baseline"]
 
