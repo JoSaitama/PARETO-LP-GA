@@ -111,7 +111,9 @@ def main():
 
         delta = after_pc - base_pc
         # DI fitness: target must improve, minimize non-target drops
-        if np.any(delta[targets] <= 0):
+        eps = 1e-3  # or 1e-2
+        if np.any(delta[targets] <= eps):
+        # if np.any(delta[targets] <= 0):
             fit = -1e9
         else:
             non_t = [k for k in range(K) if k not in targets]
