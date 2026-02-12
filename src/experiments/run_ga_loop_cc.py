@@ -168,4 +168,261 @@ def main():
 
     targets = [int(x) for x in args.targets.split(",") if x.strip() != ""]
     if len(targets) == 0:
-        raise ValueEr
+        raise ValueError("targets is empty. Use --targets like '2,3'.")
+
+    K = 10  # CIFAR-10
+
+    # ===== load influence matrix & ceiling check =====
+    P = np.load(args.P_train)
+    if P.ndim != 2 or P.shape[1] != K:
+        raise ValueError(f"P_train shape expected (N,{K}), got {P.shape}.")
+    evr1 = explained_var_ratio_first_pc(P)
+    print("Ceiling check EVR1:", evr1)
+
+    # ===== data =====
+    train_tf = cifar10_train_aug() if args.train_aug else cifar10_noaug()
+    test_tf = cifar10_noaug()
+
+    train_ds = datasets.CIFAR10(root=args.data_root, train=True, download=True, transform=train_tf)
+    test_ds = datasets.CIFAR10(root=args.data_root, train=False, download=True, transform=test_tf)
+
+    train_idx_ds = IndexedDataset(train_ds)
+    test_idx_ds = IndexedDataset(test_ds)
+
+    train_loader = DataLoader(
+        train_idx_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=bool(use_amp),
+    )
+    test_loader = DataLoader(
+        test_idx_ds,
+        batch_size=256,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=bool(use_amp),
+    )
+
+    cfg = WeightedTrainConfig(
+        epochs=1,
+        device=device,
+        num_classes=K,
+        use_amp=use_amp,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        momentum=args.momentum,
+    )
+
+    # ===== load epoch e and orig epoch e+1 =====
+    model_e = ResNet9(num_classes=K).to(device)
+    model_orig = ResNet9(num_classes=K).to(device)
+
+    ckpt_e = torch.load(args.ckpt_e, map_location=device)
+    ckpt_o = torch.load(args.ckpt_orig_e1, map_location=device)
+
+    if "model_state" not in ckpt_e or "model_state" not in ckpt_o:
+        raise KeyError("Checkpoint missing 'model_state'.")
+
+    model_e.load_state_dict(ckpt_e["model_state"])
+    model_orig.load_state_dict(ckpt_o["model_state"])
+
+    orig = evaluate_indexed(model_orig, test_loader, cfg)
+    orig_pc = np.array(orig["per_class_acc"], dtype=np.float32)
+
+    print("Orig e+1 overall:", orig["acc"])
+    print("Orig e+1 per-class:", orig_pc)
+
+    t_arr = np.array(targets, dtype=int)
+
+    def evaluate_alpha(alpha: np.ndarray, seed: int) -> Tuple[float, bool, Dict[str, Any], np.ndarray]:
+        """
+        Evaluate one GA individual:
+          alpha -> w via solve_weights_projected
+          train 1 weighted epoch from epoch-e model
+          compute delta vs orig e+1
+          soft-penalty fit
+        Returns:
+          (fit, feasible, rec, w_np)
+        """
+        alpha = _project_alpha(alpha, args.alpha_project)
+
+        w_np = solve_weights_projected(
+            P=P,
+            target_classes=targets,
+            alpha=alpha,
+            w_max=args.w_max,
+            steps=args.opt_steps,
+            seed=int(seed),
+        )
+        w = torch.from_numpy(w_np).to(device)
+
+        model = ResNet9(num_classes=K).to(device)
+        model.load_state_dict(model_e.state_dict())
+
+        optimizer = optim.SGD(
+            model.parameters(),
+            lr=cfg.lr,
+            momentum=cfg.momentum,
+            weight_decay=cfg.weight_decay,
+        )
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1)
+        scaler = GradScaler("cuda", enabled=cfg.use_amp)
+
+        train_one_epoch_weighted(model, train_loader, optimizer, cfg, scaler, w)
+        scheduler.step()
+
+        after = evaluate_indexed(model, test_loader, cfg)
+        after_pc = np.array(after["per_class_acc"], dtype=np.float32)
+
+        delta = after_pc - orig_pc
+
+        # ===== fitness: encourage target improvement, penalize non-target harm and shortfall =====
+        eps = float(args.eps)
+        target_set = set(targets)
+        non_t = [k for k in range(K) if k not in target_set]
+
+        neg_sum = float(delta[non_t][delta[non_t] < 0].sum()) if len(non_t) else 0.0
+
+        # shortfall <= 0 means not meeting eps on targets
+        shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
+        penalty = float(args.lambda_shortfall) * float(shortfall.sum())
+
+        fit = float(delta[t_arr].mean() + neg_sum + penalty)
+        feasible = bool(np.all(delta[t_arr] > eps))
+
+        worst_non_t = float(delta[non_t].min()) if len(non_t) else 0.0
+
+        rec: Dict[str, Any] = {
+            "alpha": alpha.tolist(),
+            "fitness": fit,
+            "feasible": feasible,
+            "orig_e1_overall": float(orig["acc"]),
+            "orig_e1_per_class": orig_pc.tolist(),
+            "new_e1_overall": float(after["acc"]),
+            "new_e1_per_class": after_pc.tolist(),
+            "delta_vs_orig_per_class": delta.tolist(),
+            "delta_targets": delta[targets].tolist(),
+            "mean_target": float(delta[targets].mean()),
+            "neg_sum": float(neg_sum),
+            "worst_non_target": float(worst_non_t),
+            "shortfall_sum": float(shortfall.sum()),
+        }
+        return fit, feasible, rec, w_np
+
+    # ===== init population of alphas =====
+    pop: List[np.ndarray] = []
+
+    # Optional: seed population from previous best.json
+    if args.init_from_best_json:
+        try:
+            with open(args.init_from_best_json, "r") as f:
+                bj = json.load(f)
+            if isinstance(bj, dict) and "alpha" in bj:
+                a0 = np.array(bj["alpha"], dtype=np.float32)
+                if a0.size == K:
+                    pop.append(_project_alpha(a0, args.alpha_project))
+                    print("Seeded GA with alpha from:", args.init_from_best_json)
+                else:
+                    print(f"WARN: init alpha size {a0.size} != K={K}")
+            else:
+                print("WARN: init_from_best_json has no 'alpha' field.")
+        except Exception as e:
+            print("WARN: failed to load init_from_best_json:", e)
+
+    while len(pop) < int(args.pop):
+        a = sample_alpha(K=K, target_classes=targets, rng=rng).astype(np.float32)
+        pop.append(_project_alpha(a, args.alpha_project))
+
+    best_rec: Dict[str, Any] | None = None
+    history: List[Dict[str, Any]] = []
+
+    # ===== GA loop =====
+    for gen in range(1, int(args.gens) + 1):
+        scored: List[Tuple[float, bool, Dict[str, Any], np.ndarray]] = []
+        fits = np.empty((int(args.pop),), dtype=np.float32)
+
+        print(f"\n=== GEN {gen:03d}/{int(args.gens):03d} ===")
+        for i, alpha in enumerate(pop):
+            seed_i = int(rng.integers(1_000_000_000))
+            fit, feasible, rec, w_np = evaluate_alpha(alpha, seed=seed_i)
+            fits[i] = float(fit)
+            scored.append((fit, feasible, rec, w_np))
+
+            print(
+                f"[gen {gen} cand {i}] feasible={feasible} fit={fit:.4f} "
+                f"delta_targets={np.array(rec['delta_targets'])} "
+                f"mean_target={rec['mean_target']:.4f} neg_sum={rec['neg_sum']:.4f} "
+                f"worst_non_target={rec['worst_non_target']:.4f} shortfall_sum={rec['shortfall_sum']:.4f}"
+            )
+
+        # sort descending by fitness
+        order = np.argsort(-fits)
+        scored_sorted = [scored[int(j)] for j in order]
+
+        gen_best_fit, gen_best_feas, gen_best_rec, gen_best_w = scored_sorted[0]
+
+        # update global best
+        if best_rec is None or float(gen_best_fit) > float(best_rec["fitness"]):
+            best_rec = dict(gen_best_rec)
+            best_rec["gen"] = int(gen)
+            save_json(os.path.join(args.out_dir, "best.json"), best_rec)
+            np.save(os.path.join(args.out_dir, "best_weights.npy"), gen_best_w)
+            print("Updated GLOBAL BEST ->", os.path.join(args.out_dir, "best.json"))
+
+        # save per-gen best
+        save_json(os.path.join(args.out_dir, f"gen_{gen:03d}_best.json"), gen_best_rec)
+        np.save(os.path.join(args.out_dir, f"gen_{gen:03d}_best_weights.npy"), gen_best_w)
+
+        # log generation summary
+        feas_count = int(sum(1 for _, feas, _, _ in scored if bool(feas)))
+        hist_row = {
+            "gen": int(gen),
+            "best_fit": float(gen_best_fit),
+            "best_feasible": bool(gen_best_feas),
+            "feasible_count": int(feas_count),
+            "mean_fit": float(np.mean(fits)),
+            "std_fit": float(np.std(fits)),
+        }
+        history.append(hist_row)
+        save_json(os.path.join(args.out_dir, "history.json"), {"history": history})
+
+        # ===== create next generation =====
+        elite_n = min(int(args.elite), int(args.pop))
+        elites = [pop[int(order[j])].copy() for j in range(elite_n)]
+        new_pop: List[np.ndarray] = elites.copy()
+
+        while len(new_pop) < int(args.pop):
+            p1 = pop[_tournament_select(rng, fits, k=int(args.tourn_k))]
+            p2 = pop[_tournament_select(rng, fits, k=int(args.tourn_k))]
+
+            child = _crossover(
+                rng,
+                p1,
+                p2,
+                cx_beta=float(args.cx_beta),
+                alpha_project=args.alpha_project,
+            )
+            child = _mutate(
+                rng,
+                child,
+                mut_rate=float(args.mut_rate),
+                mut_sigma=float(args.mut_sigma),
+                alpha_project=args.alpha_project,
+            )
+            new_pop.append(child)
+
+        pop = new_pop
+
+    out = {
+        "ceiling_evr1": float(evr1),
+        "targets": targets,
+        "best": best_rec,
+        "ga_args": vars(args),
+    }
+    save_json(os.path.join(args.out_dir, "summary.json"), out)
+    print("\nSaved:", args.out_dir)
+
+
+if __name__ == "__main__":
+    main()
