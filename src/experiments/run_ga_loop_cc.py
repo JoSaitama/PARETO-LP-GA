@@ -30,26 +30,15 @@ from src.pareto.weight_opt import solve_weights_projected
 
 def _project_alpha(alpha: np.ndarray, mode: str = "clip") -> np.ndarray:
     """
-    Project alpha according to selected mode.
-
-    clip     : clip each alpha_k to [0,1]  (paper-consistent per-class thresholds)
-    none     : leave alpha unchanged (cast to float32)
-    simplex  : old repo behavior (nonnegative & sum=1) kept for ablation
+    clip     : clip each alpha_k to [0,1]  (paper-consistent threshold range)
+    none     : leave alpha unchanged
+    simplex  : nonnegative & sum=1 (old repo behavior, for ablation only)
     """
     a = alpha.astype(np.float32)
 
-    # if mode == "clip":
-    #     return np.clip(a, 0.0, 1.0)
     if mode == "clip":
-        a = np.clip(a, 0.0, 1.0)
-        # recentre to avoid collapse-to-ones
-        m = float(a.mean())
-        if m > 1e-6:
-            a = a / m
-            a = np.clip(a, 0.0, 1.0)
-        return a
+        return np.clip(a, 0.0, 1.0)
 
-    
     if mode == "none":
         return a
 
@@ -64,7 +53,6 @@ def _project_alpha(alpha: np.ndarray, mode: str = "clip") -> np.ndarray:
 
 
 def _tournament_select(rng: np.random.Generator, fits: np.ndarray, k: int) -> int:
-    """Return index of winner among k random indices."""
     n = int(fits.shape[0])
     k = max(1, min(int(k), n))
     idx = rng.integers(0, n, size=k)
@@ -85,22 +73,9 @@ def _crossover(
     cx_beta: float,
     alpha_project: str,
 ) -> np.ndarray:
-    """
-    Blend crossover:
-      child = u*a1 + (1-u)*a2
-      u ~ Uniform(1-beta, beta)
-
-    Note: This makes most sense when beta in [0.5, 1.0].
-    If user passes beta<0.5, we clamp to 0.5 to avoid inverted interval.
-    """
     beta = float(cx_beta)
-    if beta < 0.5:
-        beta = 0.5
-    if beta > 1.0:
-        beta = 1.0
-    lo = 1.0 - beta
-    hi = beta
-    u = float(rng.uniform(lo, hi))
+    beta = min(max(beta, 0.5), 1.0)  # clamp to [0.5, 1.0]
+    u = float(rng.uniform(1.0 - beta, beta))
     child = u * a1 + (1.0 - u) * a2
     return _project_alpha(child, alpha_project)
 
@@ -112,10 +87,8 @@ def _mutate(
     mut_sigma: float,
     alpha_project: str,
 ) -> np.ndarray:
-    """Gaussian mutation on a subset of dims, then project."""
     child = a.astype(np.float32).copy()
     K = int(child.size)
-    # number of mutated dims
     m = int(np.ceil(float(mut_rate) * K))
     m = max(1, min(K, m))
     idx = rng.choice(K, size=m, replace=False)
@@ -130,15 +103,6 @@ def pick_cc_targets_from_ckpts(
     cfg: WeightedTrainConfig,
     top_n: int = 2,
 ) -> Tuple[List[int], np.ndarray, np.ndarray, np.ndarray]:
-    """
-    CC targets = classes with largest accuracy deterioration from epoch e to epoch e+1.
-
-    Returns:
-      targets: list[int] of length top_n
-      acc_e: per-class acc at epoch e (shape K)
-      acc_e1: per-class acc at epoch e+1 (shape K)
-      delta: acc_e1 - acc_e (shape K)
-    """
     res_e = evaluate_indexed(model_e, test_loader, cfg)
     res_e1 = evaluate_indexed(model_e1, test_loader, cfg)
 
@@ -146,25 +110,34 @@ def pick_cc_targets_from_ckpts(
     acc_e1 = np.array(res_e1["per_class_acc"], dtype=np.float32)
     delta = acc_e1 - acc_e
 
-    # most negative deltas are worst deteriorations
-    order = np.argsort(delta)  # ascending => most negative first
+    order = np.argsort(delta)  # most negative first
     top_n = int(max(1, min(top_n, acc_e.size)))
     targets = [int(i) for i in order[:top_n]]
-
     return targets, acc_e, acc_e1, delta
+
+
+def _make_deterministic():
+    # Make evaluation more repeatable across GA generations
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    try:
+        torch.use_deterministic_algorithms(True)
+    except Exception:
+        pass
 
 
 def main():
     p = argparse.ArgumentParser()
 
-    # ===== core args =====
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--data_root", type=str, required=True)
-    p.add_argument("--ckpt_e", type=str, required=True)          # epoch e ckpt, e.g. epoch_020.pt
-    p.add_argument("--ckpt_orig_e1", type=str, required=True)    # original epoch e+1 ckpt, e.g. epoch_021.pt
-    p.add_argument("--P_train", type=str, required=True)         # influence matrix from epoch e model
-    # p.add_argument("--targets", type=str, required=True)         # e.g. "3" or "2,3"
+    p.add_argument("--ckpt_e", type=str, required=True)
+    p.add_argument("--ckpt_orig_e1", type=str, required=True)
+    p.add_argument("--P_train", type=str, required=True)
+
+    # allow empty when using --auto_targets
     p.add_argument("--targets", type=str, default="")
+    p.add_argument("--auto_targets", type=int, default=0)
 
     p.add_argument("--out_dir", type=str, required=True)
 
@@ -174,62 +147,48 @@ def main():
     p.add_argument("--lr", type=float, default=0.01)
     p.add_argument("--weight_decay", type=float, default=5e-4)
     p.add_argument("--momentum", type=float, default=0.9)
-    p.add_argument("--eps", type=float, default=0.01)
 
-    p.add_argument("--w_max", type=float, default=10.0)
-    p.add_argument("--opt_steps", type=int, default=400)
-    p.add_argument("--lambda_shortfall", type=float, default=50.0)
+    # Paper is strict: target must improve (>0). We'll keep eps as margin.
+    p.add_argument("--eps", type=float, default=0.0)
 
-    p.add_argument(
-        "--auto_targets",
-        type=int,
-        default=0,
-        help="If >0, ignore --targets and automatically pick CC targets as top-N most deteriorated classes from ckpt_e -> ckpt_orig_e1.",
-    )
+    p.add_argument("--w_max", type=float, default=5.0)
+    p.add_argument("--opt_steps", type=int, default=800)
 
-    
-    # ===== GA params =====
+    # GA
     p.add_argument("--pop", type=int, default=30)
-    p.add_argument("--gens", type=int, default=15)
+    p.add_argument("--gens", type=int, default=12)
     p.add_argument("--elite", type=int, default=5)
     p.add_argument("--tourn_k", type=int, default=3)
-    p.add_argument("--cx_beta", type=float, default=0.5)     # 0.5 => average; 0.7 => more parent-biased
-    p.add_argument("--mut_rate", type=float, default=0.3)    # fraction of alpha dims to perturb (K=10)
-    p.add_argument("--mut_sigma", type=float, default=0.15)  # alpha noise scale
-    p.add_argument("--init_from_best_json", type=str, default="")  # optional: seed population with alpha from a prior run
+    p.add_argument("--cx_beta", type=float, default=0.7)
+    p.add_argument("--mut_rate", type=float, default=0.3)
+    p.add_argument("--mut_sigma", type=float, default=0.10)
+    p.add_argument("--init_from_best_json", type=str, default="")
 
-    # IMPORTANT: new flag to control alpha projection (paper-consistent default: clip)
     p.add_argument(
         "--alpha_project",
         type=str,
         default="clip",
         choices=["clip", "none", "simplex"],
-        help="How to project alpha after mutation/crossover/evaluation. clip is paper-consistent.",
     )
 
     args = p.parse_args()
 
     set_seed(args.seed)
+    _make_deterministic()
     rng = np.random.default_rng(args.seed)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     use_amp = (device == "cuda")
 
     ensure_dir(args.out_dir)
 
-    # targets = [int(x) for x in args.targets.split(",") if x.strip() != ""]
-    # if len(targets) == 0:
-    #     raise ValueError("targets is empty. Use --targets like '2,3'.")
-
-    K = 10  # CIFAR-10
-
-    # ===== load influence matrix & ceiling check =====
+    K = 10
     P = np.load(args.P_train)
     if P.ndim != 2 or P.shape[1] != K:
         raise ValueError(f"P_train shape expected (N,{K}), got {P.shape}.")
     evr1 = explained_var_ratio_first_pc(P)
     print("Ceiling check EVR1:", evr1)
 
-    # ===== data =====
     train_tf = cifar10_train_aug() if args.train_aug else cifar10_noaug()
     test_tf = cifar10_noaug()
 
@@ -239,10 +198,11 @@ def main():
     train_idx_ds = IndexedDataset(train_ds)
     test_idx_ds = IndexedDataset(test_ds)
 
+    # IMPORTANT: during GA evaluation, fix the train order to reduce noise
     train_loader = DataLoader(
         train_idx_ds,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=args.num_workers,
         pin_memory=bool(use_amp),
     )
@@ -264,28 +224,22 @@ def main():
         momentum=args.momentum,
     )
 
-    # ===== load epoch e and orig epoch e+1 =====
     model_e = ResNet9(num_classes=K).to(device)
     model_orig = ResNet9(num_classes=K).to(device)
 
     ckpt_e = torch.load(args.ckpt_e, map_location=device)
     ckpt_o = torch.load(args.ckpt_orig_e1, map_location=device)
-
-    if "model_state" not in ckpt_e or "model_state" not in ckpt_o:
-        raise KeyError("Checkpoint missing 'model_state'.")
-
     model_e.load_state_dict(ckpt_e["model_state"])
     model_orig.load_state_dict(ckpt_o["model_state"])
 
-    # ===== decide CC targets =====
+    # targets
     if int(args.auto_targets) > 0:
-        auto_n = int(args.auto_targets)
         targets, acc_e, acc_e1, delta_e1_minus_e = pick_cc_targets_from_ckpts(
             model_e=model_e,
             model_e1=model_orig,
             test_loader=test_loader,
             cfg=cfg,
-            top_n=auto_n,
+            top_n=int(args.auto_targets),
         )
         print("\n[AutoTargets] Picked CC targets as most deteriorated classes (e -> e+1):", targets)
         print("[AutoTargets] epoch-e per-class:", acc_e)
@@ -296,45 +250,28 @@ def main():
         if len(targets) == 0:
             raise ValueError("targets is empty. Use --targets like '2,3', or set --auto_targets > 0.")
 
-
-    
     orig = evaluate_indexed(model_orig, test_loader, cfg)
     orig_pc = np.array(orig["per_class_acc"], dtype=np.float32)
-
     print("Orig e+1 overall:", orig["acc"])
     print("Orig e+1 per-class:", orig_pc)
 
     t_arr = np.array(targets, dtype=int)
 
-    def evaluate_alpha(alpha: np.ndarray, seed: int) -> Tuple[float, bool, Dict[str, Any], np.ndarray]:
-        """
-        Evaluate one GA individual:
-          alpha -> w via solve_weights_projected
-          train 1 weighted epoch from epoch-e model
-          compute delta vs orig e+1
-          soft-penalty fit
-        Returns:
-          (fit, feasible, rec, w_np)
-        """
+    def evaluate_alpha(alpha: np.ndarray) -> Tuple[float, bool, Dict[str, Any], np.ndarray]:
         alpha = _project_alpha(alpha, args.alpha_project)
 
-        # w_np = solve_weights_projected(
-        #     P=P,
-        #     target_classes=targets,
-        #     alpha=alpha,
-        #     w_max=args.w_max,
-        #     steps=args.opt_steps,
-        #     seed=int(seed),
-        # )
-
+        # solve Line-4 LP (now real LP solver behind this call)
         w_np = solve_weights_projected(
-            P=P, target_classes=targets, alpha=alpha,
-            w_max=args.w_max, steps=args.opt_steps,
-            seed=int(args.seed)  # IMPORTANT: fixed seed for stable GA fitness
+            P=P,
+            target_classes=targets,
+            alpha=alpha,
+            w_max=args.w_max,
+            steps=args.opt_steps,
+            seed=int(args.seed),  # keep fixed for stable fitness ranking
         )
-
         w = torch.from_numpy(w_np).to(device)
 
+        # train one weighted epoch from epoch-e
         model = ResNet9(num_classes=K).to(device)
         model.load_state_dict(model_e.state_dict())
 
@@ -352,48 +289,32 @@ def main():
 
         after = evaluate_indexed(model, test_loader, cfg)
         after_pc = np.array(after["per_class_acc"], dtype=np.float32)
-
         delta = after_pc - orig_pc
 
-        # ===== fitness: encourage target improvement, penalize non-target harm and shortfall =====
         eps = float(args.eps)
+
+        # ===== paper-consistent feasibility: all targets must strictly improve (>= eps) =====
+        feasible = bool(np.all(delta[t_arr] >= eps))
+
+        # ===== paper-consistent fitness (Line 7):
+        # if any target doesn't improve -> -inf (we use a large negative)
+        # else sum of negative deltas on non-target (closer to 0 is better)
         target_set = set(targets)
         non_t = [k for k in range(K) if k not in target_set]
 
         neg_sum = float(delta[non_t][delta[non_t] < 0].sum()) if len(non_t) else 0.0
 
-        # shortfall <= 0 means not meeting eps on targets
-        shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
-        penalty = float(args.lambda_shortfall) * float(shortfall.sum())
-
-        
-        
-        # feasible = bool(np.all(delta[t_arr] > eps))
-        # fit = float(delta[t_arr].mean() + neg_sum + penalty)
-
-        feasible = bool(np.all(delta[t_arr] >= eps))
-        
-        base = float(delta[t_arr].mean() + neg_sum)  # meaningful when feasible
-        
-        # how far from feasibility (0 is best). shortfall <= 0
-        shortfall_sum = float(shortfall.sum())       # <= 0
-        violation = -shortfall_sum                   # >= 0 (bigger = worse)
-        
-        if feasible:
-            fit = 1000.0 + base
+        if not feasible:
+            fit = -1e9
         else:
-            # prefer smaller violation; tie-breaker: less harm to non-target
-            fit = -1000.0 - violation + 0.01 * float(neg_sum)
-        
-
-
+            fit = neg_sum  # maximize (best is 0, worst more negative)
 
         worst_non_t = float(delta[non_t].min()) if len(non_t) else 0.0
 
         rec: Dict[str, Any] = {
             "alpha": alpha.tolist(),
-            "fitness": fit,
-            "feasible": feasible,
+            "fitness": float(fit),
+            "feasible": bool(feasible),
             "orig_e1_overall": float(orig["acc"]),
             "orig_e1_per_class": orig_pc.tolist(),
             "new_e1_overall": float(after["acc"]),
@@ -403,14 +324,11 @@ def main():
             "mean_target": float(delta[targets].mean()),
             "neg_sum": float(neg_sum),
             "worst_non_target": float(worst_non_t),
-            "shortfall_sum": float(shortfall.sum()),
         }
-        return fit, feasible, rec, w_np
+        return float(fit), bool(feasible), rec, w_np
 
-    # ===== init population of alphas =====
+    # init population
     pop: List[np.ndarray] = []
-
-    # Optional: seed population from previous best.json
     if args.init_from_best_json:
         try:
             with open(args.init_from_best_json, "r") as f:
@@ -420,10 +338,6 @@ def main():
                 if a0.size == K:
                     pop.append(_project_alpha(a0, args.alpha_project))
                     print("Seeded GA with alpha from:", args.init_from_best_json)
-                else:
-                    print(f"WARN: init alpha size {a0.size} != K={K}")
-            else:
-                print("WARN: init_from_best_json has no 'alpha' field.")
         except Exception as e:
             print("WARN: failed to load init_from_best_json:", e)
 
@@ -434,79 +348,57 @@ def main():
     best_rec: Dict[str, Any] | None = None
     history: List[Dict[str, Any]] = []
 
-    # ===== GA loop =====
     for gen in range(1, int(args.gens) + 1):
         scored: List[Tuple[float, bool, Dict[str, Any], np.ndarray]] = []
         fits = np.empty((int(args.pop),), dtype=np.float32)
 
         print(f"\n=== GEN {gen:03d}/{int(args.gens):03d} ===")
         for i, alpha in enumerate(pop):
-            seed_i = int(rng.integers(1_000_000_000))
-            fit, feasible, rec, w_np = evaluate_alpha(alpha, seed=seed_i)
-            fits[i] = float(fit)
+            fit, feasible, rec, w_np = evaluate_alpha(alpha)
+            fits[i] = fit
             scored.append((fit, feasible, rec, w_np))
 
             print(
                 f"[gen {gen} cand {i}] feasible={feasible} fit={fit:.4f} "
                 f"delta_targets={np.array(rec['delta_targets'])} "
                 f"mean_target={rec['mean_target']:.4f} neg_sum={rec['neg_sum']:.4f} "
-                f"worst_non_target={rec['worst_non_target']:.4f} shortfall_sum={rec['shortfall_sum']:.4f}"
+                f"worst_non_target={rec['worst_non_target']:.4f}"
             )
 
-        # sort descending by fitness
-        order = np.argsort(-fits)
+        order = np.argsort(-fits)  # descending
         scored_sorted = [scored[int(j)] for j in order]
-
         gen_best_fit, gen_best_feas, gen_best_rec, gen_best_w = scored_sorted[0]
 
-        # update global best
         if best_rec is None or float(gen_best_fit) > float(best_rec["fitness"]):
             best_rec = dict(gen_best_rec)
-            best_rec["gen"] = int(gen)
+            best_rec["gen"] = gen
             save_json(os.path.join(args.out_dir, "best.json"), best_rec)
             np.save(os.path.join(args.out_dir, "best_weights.npy"), gen_best_w)
             print("Updated GLOBAL BEST ->", os.path.join(args.out_dir, "best.json"))
 
-        # save per-gen best
         save_json(os.path.join(args.out_dir, f"gen_{gen:03d}_best.json"), gen_best_rec)
         np.save(os.path.join(args.out_dir, f"gen_{gen:03d}_best_weights.npy"), gen_best_w)
 
-        # log generation summary
-        feas_count = int(sum(1 for _, feas, _, _ in scored if bool(feas)))
+        feas_count = int(sum(1 for _, feas, _, _ in scored if feas))
         hist_row = {
-            "gen": int(gen),
+            "gen": gen,
             "best_fit": float(gen_best_fit),
             "best_feasible": bool(gen_best_feas),
-            "feasible_count": int(feas_count),
+            "feasible_count": feas_count,
             "mean_fit": float(np.mean(fits)),
             "std_fit": float(np.std(fits)),
         }
         history.append(hist_row)
         save_json(os.path.join(args.out_dir, "history.json"), {"history": history})
 
-        # ===== create next generation =====
-        elite_n = min(int(args.elite), int(args.pop))
-        elites = [pop[int(order[j])].copy() for j in range(elite_n)]
+        elites = [pop[int(order[j])].copy() for j in range(min(int(args.elite), int(args.pop)))]
         new_pop: List[np.ndarray] = elites.copy()
 
         while len(new_pop) < int(args.pop):
             p1 = pop[_tournament_select(rng, fits, k=int(args.tourn_k))]
             p2 = pop[_tournament_select(rng, fits, k=int(args.tourn_k))]
-
-            child = _crossover(
-                rng,
-                p1,
-                p2,
-                cx_beta=float(args.cx_beta),
-                alpha_project=args.alpha_project,
-            )
-            child = _mutate(
-                rng,
-                child,
-                mut_rate=float(args.mut_rate),
-                mut_sigma=float(args.mut_sigma),
-                alpha_project=args.alpha_project,
-            )
+            child = _crossover(rng, p1, p2, cx_beta=args.cx_beta, alpha_project=args.alpha_project)
+            child = _mutate(rng, child, mut_rate=args.mut_rate, mut_sigma=args.mut_sigma, alpha_project=args.alpha_project)
             new_pop.append(child)
 
         pop = new_pop
