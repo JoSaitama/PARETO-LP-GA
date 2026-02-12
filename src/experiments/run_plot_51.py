@@ -180,7 +180,24 @@ def main():
     row_names, acc_change, _ = _rebuild_mats(obj, K=K)
 
     # If cum_influence.npy exists and aligned, load it; else skip cum heatmap
-    cum = _load_cum_if_available(out_dir, row_names, K=K)
+    # cum = _load_cum_if_available(out_dir, row_names, K=K)
+
+    inf_dir = args.inf_dir.strip() if args.inf_dir.strip() else out_dir
+    
+    # 1) 优先：用 P_train + top_lists 重算 cum（最可靠）
+    try:
+        cum = compute_cum_from_ptrain(inf_dir, row_names, K=K)
+        print("cum computed from:", inf_dir)
+    except Exception as e:
+        print("Failed to compute cum from P_train/top_lists, fallback to cum_influence.npy. Reason:", repr(e))
+        # 2) fallback：读 cum_influence.npy（如果存在并且对齐）
+        cum = _load_cum_if_available(out_dir, row_names, K=K)
+    
+    # 3) 如果仍然没有，才是 None
+    if cum is None:
+        print("cum is None (no P_train/top_lists and no aligned cum_influence.npy).")
+
+    
 
     # split rows
     idx_all = np.arange(len(row_names))
