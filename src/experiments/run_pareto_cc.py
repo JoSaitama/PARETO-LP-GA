@@ -34,10 +34,16 @@ def main():
     p.add_argument("--train_aug", type=int, default=1)
     p.add_argument("--batch_size", type=int, default=128)
     p.add_argument("--num_workers", type=int, default=2)
-
+    p.add_argument("--lr", type=float, default=0.01)
+    p.add_argument("--weight_decay", type=float, default=5e-4)
+    p.add_argument("--momentum", type=float, default=0.9)
+    p.add_argument("--eps", type=float, default=0.01)
+    
     p.add_argument("--pop", type=int, default=10)
     p.add_argument("--w_max", type=float, default=5.0)
     p.add_argument("--opt_steps", type=int, default=400)
+
+
     args = p.parse_args()
 
     set_seed(args.seed)
@@ -69,7 +75,7 @@ def main():
                              num_workers=args.num_workers, pin_memory=use_amp)
 
     cfg = WeightedTrainConfig(epochs=1, device=device, num_classes=10, use_amp=use_amp,
-                              lr=0.1, weight_decay=5e-4, momentum=0.9)
+                              lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)0.9)
 
     # load epoch e and orig epoch e+1
     model_e = ResNet9(num_classes=10).to(device)
@@ -112,7 +118,9 @@ def main():
         delta = after_pc - orig_pc
 
         # CC fitness: targets must improve relative to orig e+1
-        if np.any(delta[targets] <= 0):
+        # if np.any(delta[targets] <= 0):
+        eps = args.eps  # or 1e-2
+        if np.any(delta[targets] <= eps):
             fit = -1e9
         else:
             non_t = [k for k in range(K) if k not in targets]
