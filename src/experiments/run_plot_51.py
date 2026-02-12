@@ -299,7 +299,7 @@ def plot_scatter_target_only(mode: str, save_name: str):
         if mode not in key:
             continue
         t = int(key.split("_")[0][1:])
-        x = float(cum[i, t])
+        x = - float(cum[i, t])
         y = float(acc_change[i, t])
         if np.isfinite(x) and np.isfinite(y):
             xs.append(x); ys.append(y)
@@ -328,7 +328,7 @@ def plot_scatter_target_only(mode: str, save_name: str):
             if mode not in key:
                 continue
             for k in range(K):
-                x = float(cum[i, k])
+                x = - float(cum[i, k])
                 y = float(acc_change[i, k])
                 if np.isfinite(x) and np.isfinite(y):
                     xs.append(x); ys.append(y)
