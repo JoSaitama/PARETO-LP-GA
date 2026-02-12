@@ -113,9 +113,15 @@ def _plot_heatmap(mat, row_names, title, save_path, vlim=None):
         vlim = (-vmax, vmax)
 
     norm = TwoSlopeNorm(vmin=vlim[0], vcenter=0.0, vmax=vlim[1])
-
-    plt.figure(figsize=(10, max(4, 0.35 * len(row_names))))
-    im = plt.imshow(m, aspect="auto", cmap="RdBu_r", norm=norm)  # RdBu_r: negative->blue, positive->red
+    
+    K = m.shape[1]
+    R = len(row_names)
+    size = max(6, 0.6 * max(K, R))
+    plt.figure(figsize=(size, size))
+    im = plt.imshow(m, aspect="equal", cmap="RdBu_r", norm=norm)  # RdBu_r: negative->blue, positive->red
+    
+    # plt.figure(figsize=(10, max(4, 0.35 * len(row_names))))
+    # im = plt.imshow(m, aspect="auto", cmap="RdBu_r", norm=norm)  
     plt.yticks(range(len(row_names)), row_names)
     plt.xticks(range(K), list(range(K)))
     plt.colorbar(im)
