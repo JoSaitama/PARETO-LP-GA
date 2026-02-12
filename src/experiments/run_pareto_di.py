@@ -33,7 +33,10 @@ def main():
     p.add_argument("--train_aug", type=int, default=1)       # DI uses aug training typically
     p.add_argument("--batch_size", type=int, default=128)
     p.add_argument("--num_workers", type=int, default=2)
-
+    p.add_argument("--lr", type=float, default=0.01)
+    p.add_argument("--weight_decay", type=float, default=0.01)
+    p.add_argument("--momentum", type=float, default=0.01)
+    
     # search params
     p.add_argument("--pop", type=int, default=10)            # number of alpha candidates
     p.add_argument("--w_max", type=float, default=5.0)
@@ -75,7 +78,7 @@ def main():
     ckpt = torch.load(args.ckpt_e, map_location=device)
     model_e.load_state_dict(ckpt["model_state"])
     cfg = WeightedTrainConfig(epochs=1, device=device, num_classes=10, use_amp=use_amp,
-                              lr=0.1, weight_decay=5e-4, momentum=0.9)
+                              lr=args.lr, weight_decay=lr=args.weight_decay, momentum=lr=args.weight_decay)
 
     # baseline eval at epoch e
     base_e = evaluate_indexed(model_e, test_loader, cfg)
