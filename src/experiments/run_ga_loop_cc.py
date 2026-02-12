@@ -38,9 +38,18 @@ def _project_alpha(alpha: np.ndarray, mode: str = "clip") -> np.ndarray:
     """
     a = alpha.astype(np.float32)
 
+    # if mode == "clip":
+    #     return np.clip(a, 0.0, 1.0)
     if mode == "clip":
-        return np.clip(a, 0.0, 1.0)
+        a = np.clip(a, 0.0, 1.0)
+        # recentre to avoid collapse-to-ones
+        m = float(a.mean())
+        if m > 1e-6:
+            a = a / m
+            a = np.clip(a, 0.0, 1.0)
+        return a
 
+    
     if mode == "none":
         return a
 
@@ -355,7 +364,7 @@ def main():
         # feasible = bool(np.all(delta[t_arr] > eps))
         # fit = float(delta[t_arr].mean() + neg_sum + penalty)
 
-        feasible = bool(np.all(delta[t_arr] > eps))
+        feasible = bool(np.all(delta[t_arr] >= eps))
         
         base = float(delta[t_arr].mean() + neg_sum)  # meaningful when feasible
         
