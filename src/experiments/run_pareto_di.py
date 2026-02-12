@@ -78,7 +78,7 @@ def main():
     ckpt = torch.load(args.ckpt_e, map_location=device)
     model_e.load_state_dict(ckpt["model_state"])
     cfg = WeightedTrainConfig(epochs=1, device=device, num_classes=10, use_amp=use_amp,
-                              lr=args.lr, weight_decay=lr=args.weight_decay, momentum=lr=args.weight_decay)
+                              lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
 
     # baseline eval at epoch e
     base_e = evaluate_indexed(model_e, test_loader, cfg)
