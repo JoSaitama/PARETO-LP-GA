@@ -36,6 +36,7 @@ def main():
     p.add_argument("--lr", type=float, default=0.01)
     p.add_argument("--weight_decay", type=float, default=5e-4)
     p.add_argument("--momentum", type=float, default=0.9)
+    p.add_argument("--eps", type=float, default=0.01)
     
     # search params
     p.add_argument("--pop", type=int, default=10)            # number of alpha candidates
@@ -111,7 +112,7 @@ def main():
 
         delta = after_pc - base_pc
         # DI fitness: target must improve, minimize non-target drops
-        eps = 1e-3  # or 1e-2
+        eps = ags.eps  # or 1e-2
         if np.any(delta[targets] <= eps):
         # if np.any(delta[targets] <= 0):
             fit = -1e9
