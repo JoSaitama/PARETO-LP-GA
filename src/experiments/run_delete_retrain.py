@@ -37,6 +37,8 @@ def retrain_once(
     batch_size: int,
     num_workers: int,
     init_state_dict=None,
+    # define print frequency
+    print_every: int = 10, 
 ):
     N = len(train_ds_full)
     removed_set = set(removed_idx.tolist())
@@ -83,7 +85,8 @@ def retrain_once(
             best_state = {k: v.cpu() for k, v in model.state_dict().items()}
 
         # if ep in (1, max(1, epochs // 2), epochs):
-        if ep == 1 or ep % 10 == 0 or ep == epochs:
+        if ep == 1 or ep % print_every == 0 or ep == epochs:
+        # if ep == 1 or ep % 10 == 0 or ep == epochs:
             print(f"  ep {ep:02d}/{epochs} test_acc={te['acc']:.2f} best={best:.2f}")
 
     model.load_state_dict(best_state)
@@ -235,6 +238,7 @@ def main():
                 batch_size=args.batch_size,
                 num_workers=args.num_workers,
                 init_state_dict=init_state,
+                print_every=10,
             )
 
             new_acc = out["per_class_acc"]
