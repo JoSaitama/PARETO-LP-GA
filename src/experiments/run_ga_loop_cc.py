@@ -350,8 +350,16 @@ def main():
         shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
         penalty = float(args.lambda_shortfall) * float(shortfall.sum())
 
-        fit = float(delta[t_arr].mean() + neg_sum + penalty)
+        
+        
         feasible = bool(np.all(delta[t_arr] > eps))
+        # fit = float(delta[t_arr].mean() + neg_sum + penalty)
+        base = float(delta[t_arr].mean() + neg_sum)  # only meaningful when feasible
+        if feasible:
+            fit = 1000.0 + base          # big bonus so feasible always dominates
+        else:
+            fit = -1000.0 + penalty      # penalty is <=0, more negative => worse
+
 
         worst_non_t = float(delta[non_t].min()) if len(non_t) else 0.0
 
