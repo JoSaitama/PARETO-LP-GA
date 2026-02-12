@@ -42,6 +42,7 @@ def main():
     p.add_argument("--pop", type=int, default=10)
     p.add_argument("--w_max", type=float, default=5.0)
     p.add_argument("--opt_steps", type=int, default=400)
+    p.add_argument("--lambda_shortfall", type=float, default=50.0)
 
 
     args = p.parse_args()
