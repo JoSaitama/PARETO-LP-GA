@@ -60,6 +60,7 @@ def main():
     scaler = GradScaler("cuda", enabled=cfg.use_amp)
 
     save_epochs = sorted({int(x) for x in args.save_epochs.split(",") if x.strip()})
+    best_acc = -1.0
     history: List[Dict[str, Any]] = []
 
     for epoch in range(1, cfg.epochs + 1):
