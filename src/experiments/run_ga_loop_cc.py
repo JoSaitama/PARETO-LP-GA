@@ -367,7 +367,7 @@ def main():
             fit = 1000.0 + base
         else:
             # prefer smaller violation; tie-breaker: less harm to non-target
-            fit = -1000.0 - violat
+            fit = -1000.0 - violation
 
 
 
