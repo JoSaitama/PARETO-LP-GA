@@ -318,14 +318,21 @@ def main():
         """
         alpha = _project_alpha(alpha, args.alpha_project)
 
+        # w_np = solve_weights_projected(
+        #     P=P,
+        #     target_classes=targets,
+        #     alpha=alpha,
+        #     w_max=args.w_max,
+        #     steps=args.opt_steps,
+        #     seed=int(seed),
+        # )
+
         w_np = solve_weights_projected(
-            P=P,
-            target_classes=targets,
-            alpha=alpha,
-            w_max=args.w_max,
-            steps=args.opt_steps,
-            seed=int(seed),
+            P=P, target_classes=targets, alpha=alpha,
+            w_max=args.w_max, steps=args.opt_steps,
+            seed=int(args.seed)  # IMPORTANT: fixed seed for stable GA fitness
         )
+
         w = torch.from_numpy(w_np).to(device)
 
         model = ResNet9(num_classes=K).to(device)
