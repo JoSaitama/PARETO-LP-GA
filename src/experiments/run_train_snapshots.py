@@ -78,6 +78,22 @@ def main():
         }
         history.append(row)
 
+        # best checkpoint
+        if te["acc"] > best_acc:
+            best_acc = float(te["acc"])
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state": model.state_dict(),
+                    "optimizer_state": optimizer.state_dict(),
+                    "best_acc": best_acc,
+                    "cfg": cfg.__dict__,
+                    "data_cfg": data_cfg.__dict__,
+                },
+                os.path.join(ckpt_dir, "best.pt"),
+            )
+        
+        
         if epoch == 1 or epoch % 5 == 0 or epoch == cfg.epochs:
             print(f"[{epoch:03d}/{cfg.epochs}] test_acc={row['test_acc']:.2f} time={row['sec']:.1f}s")
 
