@@ -34,8 +34,8 @@ def main():
     p.add_argument("--batch_size", type=int, default=128)
     p.add_argument("--num_workers", type=int, default=2)
     p.add_argument("--lr", type=float, default=0.01)
-    p.add_argument("--weight_decay", type=float, default=0.01)
-    p.add_argument("--momentum", type=float, default=0.01)
+    p.add_argument("--weight_decay", type=float, default=5e-4)
+    p.add_argument("--momentum", type=float, default=0.9)
     
     # search params
     p.add_argument("--pop", type=int, default=10)            # number of alpha candidates
