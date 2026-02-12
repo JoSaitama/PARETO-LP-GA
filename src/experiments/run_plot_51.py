@@ -251,48 +251,121 @@ def main():
     # else:
     #     print("cum_influence.npy not available/aligned; skip scatter/spearman.")
 
-    def plot_scatter_for_mode(mode: str, save_name: str):
+    # def plot_scatter_for_mode(mode: str, save_name: str):
+    #     xs, ys = [], []
+    #     for i, key in enumerate(row_names):
+    #         if mode not in key:
+    #             continue
+    
+    #         # key = "t2_beneficial" -> target = 2
+    #         t = int(key.split("_")[0][1:])
+    
+    #         # 
+    #         x = float(cum[i, t])          # cum influence on target dimension
+    #         y = float(acc_change[i, t])   # delta acc on target class
+    
+    #         if np.isfinite(x) and np.isfinite(y):
+    #             xs.append(x); ys.append(y)
+    
+    #     if len(xs) < 3:
+    #         print(f"Not enough points for scatter ({mode}).")
+    #         return
+    
+    #     rho = spearmanr_approx(np.array(xs), np.array(ys))
+    
+    #     plt.figure(figsize=(6, 6))
+    #     plt.scatter(xs, ys, s=35)
+    #     plt.axhline(0, linewidth=1)
+    #     plt.axvline(0, linewidth=1)
+    #     plt.title(f"{mode}: cum(target) vs delta(target)  (Spearman≈{rho:.3f})")
+    #     plt.xlabel("cum influence on target dimension")
+    #     plt.ylabel("accuracy change on target class")
+    #     plt.tight_layout()
+    #     plt.savefig(os.path.join(out_dir, save_name), dpi=300)
+    #     plt.show()
+    
+    #     print(f"{mode} Spearman approx:", rho)
+    
+    
+    # if cum is not None:
+    #     plot_scatter_for_mode("beneficial", "scatter_target_beneficial.png")
+    #     plot_scatter_for_mode("detrimental", "scatter_target_detrimental.png")
+    # else:
+    #     print("cum not available; skip scatter.")
+
+def plot_scatter_target_only(mode: str, save_name: str):
+    xs, ys = [], []
+    for i, key in enumerate(row_names):
+        if mode not in key:
+            continue
+        t = int(key.split("_")[0][1:])
+        x = float(cum[i, t])
+        y = float(acc_change[i, t])
+        if np.isfinite(x) and np.isfinite(y):
+            xs.append(x); ys.append(y)
+
+    if len(xs) < 3:
+        print(f"Not enough points (target-only) for {mode}.")
+        return
+
+    rho = spearmanr_approx(np.array(xs), np.array(ys))
+    plt.figure(figsize=(6,6))
+    plt.scatter(xs, ys, s=60)
+    plt.axhline(0, linewidth=1)
+    plt.axvline(0, linewidth=1)
+    plt.title(f"{mode} target-only (Spearman≈{rho:.3f})")
+    plt.xlabel("cum influence on target dimension")
+    plt.ylabel("accuracy change on target class")
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, save_name), dpi=300)
+    plt.show()
+    print(mode, "target-only Spearman approx:", rho)
+
+
+    def plot_scatter_classwise(mode: str, save_name: str):
         xs, ys = [], []
         for i, key in enumerate(row_names):
             if mode not in key:
                 continue
+            for k in range(K):
+                x = float(cum[i, k])
+                y = float(acc_change[i, k])
+                if np.isfinite(x) and np.isfinite(y):
+                    xs.append(x); ys.append(y)
     
-            # key = "t2_beneficial" -> target = 2
-            t = int(key.split("_")[0][1:])
-    
-            # 只看 target 维度（最关键）
-            x = float(cum[i, t])          # cum influence on target dimension
-            y = float(acc_change[i, t])   # delta acc on target class
-    
-            if np.isfinite(x) and np.isfinite(y):
-                xs.append(x); ys.append(y)
-    
-        if len(xs) < 3:
-            print(f"Not enough points for scatter ({mode}).")
+        xs = np.array(xs); ys = np.array(ys)
+        if xs.size < 10:
+            print(f"Not enough points (class-wise) for {mode}.")
             return
     
-        rho = spearmanr_approx(np.array(xs), np.array(ys))
+        rho = spearmanr_approx(xs, ys)
     
-        plt.figure(figsize=(6, 6))
-        plt.scatter(xs, ys, s=35)
+        a, b = np.polyfit(xs, ys, deg=1)
+        xline = np.linspace(xs.min(), xs.max(), 200)
+        yline = a * xline + b
+    
+        plt.figure(figsize=(6,6))
+        plt.scatter(xs, ys, s=20)
+        plt.plot(xline, yline, linewidth=2)
         plt.axhline(0, linewidth=1)
         plt.axvline(0, linewidth=1)
-        plt.title(f"{mode}: cum(target) vs delta(target)  (Spearman≈{rho:.3f})")
-        plt.xlabel("cum influence on target dimension")
-        plt.ylabel("accuracy change on target class")
+        plt.title(f"{mode} class-wise (Spearman≈{rho:.3f}, N={xs.size})")
+        plt.xlabel("Class-wise influences (cum over removed set)")
+        plt.ylabel("Per-class accuracy differences (%)")
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, save_name), dpi=300)
         plt.show()
-    
-        print(f"{mode} Spearman approx:", rho)
+        print(mode, "class-wise Spearman approx:", rho, "N=", xs.size)
     
     
     if cum is not None:
-        plot_scatter_for_mode("beneficial", "scatter_target_beneficial.png")
-        plot_scatter_for_mode("detrimental", "scatter_target_detrimental.png")
+        plot_scatter_target_only("beneficial", "scatter_target_beneficial.png")
+        plot_scatter_target_only("detrimental", "scatter_target_detrimental.png")
+    
+        plot_scatter_classwise("beneficial", "scatter_classwise_beneficial.png")
+        plot_scatter_classwise("detrimental", "scatter_classwise_detrimental.png")
     else:
         print("cum not available; skip scatter.")
-
 
 
 
