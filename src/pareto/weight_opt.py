@@ -85,7 +85,7 @@ def solve_weights_lp_dual(
             best_violation = violation
             best_w = w.copy()
 
-        if violation <= tol:
+        if (t > 200) and (violation <= tol):
             best_w = w
             break
 
