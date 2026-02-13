@@ -76,7 +76,11 @@ def solve_weights_lp_dual(
         viol = b - Aw
         viol_pos = np.maximum(0.0, viol)
         violation = float(np.max(viol_pos))  # max positive violation
-
+        S  = P.sum(axis=0)
+        ratio = Aw / (S + 1e-12)
+        print("[DBG] achieved_ratio min/mean/max:",
+              float(ratio.min()), float(ratio.mean()), float(ratio.max()))
+        
         if violation < best_violation:
             best_violation = violation
             best_w = w.copy()
