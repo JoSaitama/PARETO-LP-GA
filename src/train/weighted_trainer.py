@@ -50,7 +50,9 @@ def train_one_epoch_weighted(
         with autocast(device_type=("cuda" if cfg.device == "cuda" else "cpu"), enabled=cfg.use_amp):
             logits = model(x)
             per_sample = loss_fn(logits, y)          # [B]
-            loss = (per_sample * w).mean()
+            # loss = (per_sample * w).mean()
+            loss = (per_sample * w).sum() / (w.sum() + 1e-12)
+
 
         scaler.scale(loss).backward()
         scaler.step(optimizer)
