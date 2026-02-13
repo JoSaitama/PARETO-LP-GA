@@ -296,6 +296,14 @@ def main():
             seed=int(args.seed),  # keep fixed for stable fitness ranking
         )
 
+        # ===== DEBUG: check whether alpha actually changes w =====
+        import hashlib
+        w_bytes = w_np.astype(np.float32).tobytes()
+        print("[DBG] alpha_minmaxmean:",
+              float(alpha.min()), float(alpha.max()), float(alpha.mean()))
+        print("[DBG] w_md5:", hashlib.md5(w_bytes).hexdigest(),
+              "w_minmaxmean:", float(w_np.min()), float(w_np.max()), float(w_np.mean()))
+        print("[DBG] w_head:", w_np[:10])
         # w_np = solve_weights_hard_topk(
         #     P=P,
         #     target_classes=targets,
