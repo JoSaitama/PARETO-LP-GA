@@ -25,7 +25,7 @@ from src.train.weighted_trainer import (
 )
 from src.pareto.ceiling_pca import explained_var_ratio_first_pc
 from src.pareto.ga_search import sample_alpha
-from src.pareto.weight_opt import solve_weights_projected
+from src.pareto.weight_opt import solve_weights_projected,solve_weights_soft
 
 
 def _project_alpha(alpha: np.ndarray, mode: str = "clip") -> np.ndarray:
@@ -281,14 +281,15 @@ def main():
         alpha = _project_alpha(alpha, args.alpha_project)
 
         # solve Line-4 LP (now real LP solver behind this call)
-        w_np = solve_weights_projected(
-            P=P,
-            target_classes=targets,
-            alpha=alpha,
-            w_max=args.w_max,
-            steps=args.opt_steps,
-            seed=int(args.seed),  # keep fixed for stable fitness ranking
-        )
+        # w_np = solve_weights_projected(
+        #     P=P,
+        #     target_classes=targets,
+        #     alpha=alpha,
+        #     w_max=args.w_max,
+        #     steps=args.opt_steps,
+        #     seed=int(args.seed),  # keep fixed for stable fitness ranking
+        # )
+        w_np = solve_weights_soft(P, targets, alpha, w_max=float(args.w_max))
         # DEBUG
         if (not np.all(np.isfinite(w_np))) or (w_np.ndim != 1):
             rec = {"alpha": alpha.tolist(), "fitness": -1e6, "feasible": False,
