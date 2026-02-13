@@ -31,7 +31,7 @@ def solve_weights_lp_dual(
     """
     rng = np.random.default_rng(seed)
     P = np.asarray(P, dtype=np.float64)
-    P = -P   # IMPORTANT: align sign with paper's definition of "beneficial influence"
+    # P = -P   # IMPORTANT: align sign with paper's definition of "beneficial influence"
     N, K = P.shape
     alpha = np.asarray(alpha, dtype=np.float64).reshape(-1)
     if alpha.size != K:
