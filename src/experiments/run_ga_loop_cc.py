@@ -187,7 +187,6 @@ def main():
 
     K = 10
     P = np.load(args.P_train)
-    P = P_train
     print("[P_stats] min/max:", float(P.min()), float(P.max()))
     for k in range(P.shape[1]):
         neg = float((P[:, k] < 0).mean())
