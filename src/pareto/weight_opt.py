@@ -194,10 +194,14 @@ def solve_weights_soft(P, targets, alpha, w_max=4.0, eps=1e-8):
     a_t = float(np.mean(alpha[targets]))
     a_t = float(np.clip(a_t, 0.0, 2.0))
 
-    keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
+    # keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
+    keep_ratio = 0.2
     thr = float(np.quantile(c, 1.0 - keep_ratio))
 
+    c_max = float(c.max())
+    den = max(c_max - thr, 1e-6)
+    w = 1.0 + (w_max - 1.0) * np.clip((c - thr) / den, 0.0, 1.0)
     # continuous weight from 1 to w_max for samples above threshold
-    w = 1.0 + (w_max - 1.0) * np.clip((c - thr) / (1.0 - thr + 1e-8), 0.0, 1.0)
+    # w = 1.0 + (w_max - 1.0) * np.clip((c - thr) / (1.0 - thr + 1e-8), 0.0, 1.0)
 
     return w.astype(np.float32), {"mode": "soft_tradeoff", "keep_ratio": keep_ratio, "thr": thr, "beta": beta}
