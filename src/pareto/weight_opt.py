@@ -150,7 +150,9 @@ def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
 
     # Map alpha -> keep_ratio in (0.1, 0.9)
     # higher alpha => more selective => smaller keep_ratio => more extreme reweighting
-    keep_ratio = float(np.clip(0.9 - 0.35 * a_t, 0.10, 0.90))
+    # keep_ratio = float(np.clip(0.9 - 0.35 * a_t, 0.10, 0.90))
+    keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
+
 
     thr = float(np.quantile(c, 1.0 - keep_ratio))  # top keep_ratio gets high weight
     high = (c >= thr).astype(np.float32)
