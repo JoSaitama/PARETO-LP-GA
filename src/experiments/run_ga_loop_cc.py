@@ -188,6 +188,24 @@ def main():
     P = np.load(args.P_train)
     if P.ndim != 2 or P.shape[1] != K:
         raise ValueError(f"P_train shape expected (N,{K}), got {P.shape}.")
+
+    # ----------------------------
+    # Fix influence sign to match paper's LP direction
+    # Paper assumes larger P is "better" for targets in the LP objective/constraints.
+    # If sums over classes are mostly negative, constraints become trivial and w becomes alpha-invariant.
+    # ----------------------------
+    S = P.sum(axis=0)  # [K]
+    print("[P_check] sum(P) per class:", S)
+    print("[P_check] mean sum(P):", float(S.mean()))
+    
+    # Heuristic: if average class sum is negative, flip sign
+    if float(S.mean()) < 0.0:
+        print("[P_check] Flipping P <- -P to match LP direction.")
+        P = -P
+        S2 = P.sum(axis=0)
+        print("[P_check] After flip, mean sum(P):", float(S2.mean()))
+
+    
     evr1 = explained_var_ratio_first_pc(P)
     print("Ceiling check EVR1:", evr1)
 
@@ -278,8 +296,12 @@ def main():
                    "mean_target": float("nan"), "neg_sum": float("nan"),
                    "worst_non_target": float("nan"), "shortfall_sum": float("nan")}
             return -1e6, False, rec, np.zeros(P.shape[0], dtype=np.float32)
-
-        
+        print("for debug w_stats:",
+            float(w_np.min()), float(w_np.max()), float(w_np.mean()),
+            "nz%", float((w_np > 0).mean()),
+            "at_wmax%", float((w_np >= float(args.w_max) - 1e-6).mean()))
+        # for debug
+        print("alpha_in_eval:", np.array(alpha, dtype=np.float32))
         w = torch.from_numpy(w_np).to(device)
         # for debug
         # w = torch.ones_like(w)
@@ -442,10 +464,6 @@ def main():
                 f"mean_target={rec['mean_target']:.4f} neg_sum={rec['neg_sum']:.4f} "
                 f"worst_non_target={rec['worst_non_target']:.4f}"
             )
-            print("for debug w_stats:",
-                  float(w_np.min()), float(w_np.max()), float(w_np.mean()),
-                  "nz%", float((w_np > 0).mean()),
-                  "at_wmax%", float((w_np >= float(args.w_max) - 1e-6).mean()))
 
             if i < 5:
                 print("alpha_stats", float(alpha.min()), float(alpha.max()), float(alpha.mean()))
