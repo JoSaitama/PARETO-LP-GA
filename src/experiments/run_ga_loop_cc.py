@@ -37,7 +37,7 @@ def _project_alpha(alpha: np.ndarray, mode: str = "clip") -> np.ndarray:
     a = alpha.astype(np.float32)
 
     if mode == "clip":
-        return np.clip(a, 0.0, 2.0)
+        return np.clip(a, 0.0, 1.0)
 
     if mode == "none":
         return a
@@ -146,8 +146,9 @@ def main():
     p.add_argument("--train_aug", type=int, default=0)
     p.add_argument("--batch_size", type=int, default=128)
     p.add_argument("--num_workers", type=int, default=2)
-    p.add_argument("--lr", type=float, default=0.01)
-    p.add_argument("--weight_decay", type=float, default=5e-4)
+    # NOTE: paper uses lr=1e-4, wd=1e-4 for PARETO-LP-GA stage (Table 2)
+    p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument("--weight_decay", type=float, default=1e-4)
     p.add_argument("--momentum", type=float, default=0.9)
 
     # Paper is strict: target must improve (>0). We'll keep eps as margin.
@@ -422,13 +423,14 @@ def main():
         target_set = set(targets)
         non_t = [k for k in range(K) if k not in target_set]
         
-        neg = delta[non_t][delta[non_t] < 0] if len(non_t) else np.array([], dtype=np.float32)
+        neg = (delta[non_t] * (delta[non_t] < 0)).astype(np.float32) if len(non_t) else np.array([], dtype=np.float32)
         neg_sum = float(neg.sum()) if neg.size else 0.0
         
         if not feasible:
             fit = -1e9
         else:
-            fit = float(neg.mean()) if neg.size else 0.0   # maximize (closest to 0 is best)
+            # paper Line-7: average negative deltas over ALL non-target classes (zeros for non-negative)
+            fit = float(neg.mean()) if len(non_t) else 0.0
 
 
 
