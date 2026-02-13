@@ -124,6 +124,46 @@ def solve_weights_projected(
         normalize_mean_to_1=False,
     )
 
+def solve_weights_hard_topk(
+    P: np.ndarray,
+    target_classes: list,
+    alpha: np.ndarray,
+    w_max: float,
+    keep_ratio: float = 0.2,
+):
+    """
+    Paper-like hard reweighting:
+      - score_i = sum_{t in targets} alpha_t * P_{i,t}
+      - keep top-k (k = ceil(keep_ratio * N)) samples
+      - w_i = w_max for kept, else 1.0
+    """
+    P = np.asarray(P, dtype=np.float64)
+    alpha = np.asarray(alpha, dtype=np.float64).reshape(-1)
+
+    N, K = P.shape
+    targets = list(target_classes)
+    if len(targets) == 0:
+        return np.ones(N, dtype=np.float32)
+
+    # alpha 可能是全K维，也可能你只传targets维；这里两种都兼容
+    if alpha.shape[0] == K:
+        a_t = alpha[targets]
+    else:
+        # assume alpha aligned with targets
+        if alpha.shape[0] != len(targets):
+            raise ValueError(f"alpha dim {alpha.shape[0]} not match K={K} or len(targets)={len(targets)}")
+        a_t = alpha
+
+    # score per sample
+    score = P[:, targets] @ a_t  # [N]
+
+    k = max(1, int(np.ceil(float(keep_ratio) * N)))
+    idx = np.argsort(score)[-k:]  # top-k
+
+    w = np.ones(N, dtype=np.float64)
+    w[idx] = float(w_max)
+    return w.astype(np.float32)
+
 
 # def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
 #     N, K = P.shape
