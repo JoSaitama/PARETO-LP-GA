@@ -187,10 +187,10 @@ def main():
 
     K = 10
     P = np.load(args.P_train)
-    print("[P_stats] min/max:", float(P.min()), float(P.max()))
-    for k in range(P.shape[1]):
-        neg = float((P[:, k] < 0).mean())
-        print(f"[P_stats] class {k}: neg%={neg:.4f} mean={float(P[:,k].mean()):.6f}")
+    # print("[P_stats] min/max:", float(P.min()), float(P.max()))
+    # for k in range(P.shape[1]):
+    #     neg = float((P[:, k] < 0).mean())
+    #     print(f"[P_stats] class {k}: neg%={neg:.4f} mean={float(P[:,k].mean()):.6f}")
 
     if P.ndim != 2 or P.shape[1] != K:
         raise ValueError(f"P_train shape expected (N,{K}), got {P.shape}.")
