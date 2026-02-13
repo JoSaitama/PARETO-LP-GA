@@ -66,7 +66,7 @@ def solve_weights_lp_dual(
         s = c + (P @ y)  # [N]
 
         # primal closed-form under box constraints
-        w = np.where(s > 0.0, float(w_max), 0.0).astype(np.float64)
+        w = np.where(s > 0.0, float(w_max), 1.0).astype(np.float64)
 
         # check constraint satisfaction
         Aw = P.T @ w  # [K]
@@ -120,7 +120,7 @@ def solve_weights_projected(
         lr=lr,
         seed=seed,
         tol=1e-6,
-        normalize_mean_to_1=False,
+        normalize_mean_to_1=True,
     )
 
 
