@@ -304,7 +304,7 @@ def main():
         print("alpha_in_eval:", np.array(alpha, dtype=np.float32))
         w = torch.from_numpy(w_np).to(device)
         # for debug
-        # w = torch.ones_like(w)
+        w = torch.ones_like(w)
         
         # # train one weighted epoch from epoch-e
         # model = ResNet9(num_classes=K).to(device)
