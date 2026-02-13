@@ -43,6 +43,10 @@ def solve_weights_lp_dual(
     S = P.sum(axis=0)                     # [K]
     b = alpha * S                         # [K]
 
+    print("[LP_debug] alpha min/max:", float(alpha.min()), float(alpha.max()))
+    print("[LP_debug] b min/max/mean:", float(b.min()), float(b.max()), float(b.mean()))
+
+    
     # dual vars y >= 0
     y = np.zeros(K, dtype=np.float64)
     # tiny noise to break ties in early iterations (optional)
