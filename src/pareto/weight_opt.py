@@ -120,3 +120,14 @@ def solve_weights_projected(
         tol=1e-6,
         normalize_mean_to_1=False,
     )
+
+
+def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
+    N, K = P.shape
+    c = P[:, targets].sum(axis=1)              # [N]
+    c = (c - c.min()) / (c.max() - c.min() + eps)
+    a = float(np.mean(alpha[targets]))         # scalar aggressiveness
+    a = max(0.05, a)
+    w = 1.0 + (w_max - 1.0) * (c ** (1.0 / a))
+    return w.astype(np.float32), {"mode": "soft"}
+
