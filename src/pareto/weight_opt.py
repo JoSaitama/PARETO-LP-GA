@@ -63,11 +63,12 @@ def solve_weights_lp_dual(
 
     for t in range(int(steps)):
         # scores s_i = c_i + (P y)_i
-        s = c + (P @ y)  # [N]
+        s = c - (P @ y)  # [N]
+        # s = c + (P @ y)  # [N]
 
         # primal closed-form under box constraints
-        # w = np.where(s > 0.0, float(w_max), 1.0).astype(np.float64)
-        w = np.where(s < 0.0, float(w_max), 1.0).astype(np.float64)
+        w = np.where(s > 0.0, float(w_max), 1.0).astype(np.float64)
+        # w = np.where(s < 0.0, float(w_max), 1.0).astype(np.float64)
 
         # check constraint satisfaction
         Aw = P.T @ w  # [K]
