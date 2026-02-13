@@ -390,6 +390,8 @@ def main():
                 f"mean_target={rec['mean_target']:.4f} neg_sum={rec['neg_sum']:.4f} "
                 f"worst_non_target={rec['worst_non_target']:.4f}"
             )
+            if i < 5:
+                print("alpha_stats", float(alpha.min()), float(alpha.max()), float(alpha.mean()))
 
         order = np.argsort(-fits)  # descending
         scored_sorted = [scored[int(j)] for j in order]
