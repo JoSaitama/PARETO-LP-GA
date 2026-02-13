@@ -298,7 +298,7 @@ def main():
         # Convert zeros to 1.0 so non-selected samples still contribute normally.
         # =========================
         w_np = np.asarray(w_np, dtype=np.float32).reshape(-1)
-        w_np = np.where(w_np > 0.0, w_np, 1.0).astype(np.float32)
+        # w_np = np.where(w_np > 0.0, w_np, 1.0).astype(np.float32)
         
         # debug: how many are boosted to w_max
         high = float((w_np >= (float(args.w_max) - 1e-6)).mean())
