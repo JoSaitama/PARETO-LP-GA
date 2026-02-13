@@ -271,6 +271,15 @@ def main():
             steps=args.opt_steps,
             seed=int(args.seed),  # keep fixed for stable fitness ranking
         )
+        # DEBUG
+        if (not np.all(np.isfinite(w_np))) or (w_np.ndim != 1):
+            rec = {"alpha": alpha.tolist(), "fitness": -1e6, "feasible": False,
+                   "delta_targets": [float("nan") for _ in targets],
+                   "mean_target": float("nan"), "neg_sum": float("nan"),
+                   "worst_non_target": float("nan"), "shortfall_sum": float("nan")}
+            return -1e6, False, rec, np.zeros(P.shape[0], dtype=np.float32)
+
+        
         w = torch.from_numpy(w_np).to(device)
 
         # train one weighted epoch from epoch-e
@@ -306,10 +315,25 @@ def main():
 
         neg_sum = float(delta[non_t][delta[non_t] < 0].sum()) if len(non_t) else 0.0
 
-        if not feasible:
-            fit = -1e9
+        # if not feasible:
+        #     fit = -1e9
+        # else:
+        #     fit = neg_sum  # maximize (best is 0, worst more negative)
+
+        # shortfall <= 0 means not meeting eps on targets
+        shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
+        
+        feasible = bool(np.all(delta[t_arr] >= eps))
+        
+        base = float(delta[t_arr].mean() + neg_sum)  # meaningful when feasible
+        violation = float(-shortfall.sum())          # >=0, smaller is better
+        
+        if feasible:
+            fit = 1000.0 + base
         else:
-            fit = neg_sum  # maximize (best is 0, worst more negative)
+            # primary: minimize violation; secondary: less harm to non-target
+            fit = -1000.0 - violation + 0.01 * float(neg_sum)
+
 
         worst_non_t = float(delta[non_t].min()) if len(non_t) else 0.0
 
