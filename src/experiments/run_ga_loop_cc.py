@@ -339,26 +339,26 @@ def main():
         after_pc = np.array(after["per_class_acc"], dtype=np.float32)
         delta = after_pc - orig_pc
 
-        eps = float(args.eps)
+        # eps = float(args.eps)
 
-        # ===== paper-consistent feasibility: all targets must strictly improve (>= eps) =====
-        feasible = bool(np.all(delta[t_arr] >= eps))
+        # # ===== paper-consistent feasibility: all targets must strictly improve (>= eps) =====
+        # # feasible = bool(np.all(delta[t_arr] >= eps))
 
-        # ===== paper-consistent fitness (Line 7):
-        # if any target doesn't improve -> -inf (we use a large negative)
-        # else sum of negative deltas on non-target (closer to 0 is better)
-        target_set = set(targets)
-        non_t = [k for k in range(K) if k not in target_set]
+        # # ===== paper-consistent fitness (Line 7):
+        # # if any target doesn't improve -> -inf (we use a large negative)
+        # # else sum of negative deltas on non-target (closer to 0 is better)
+        # target_set = set(targets)
+        # non_t = [k for k in range(K) if k not in target_set]
 
-        neg_sum = float(delta[non_t][delta[non_t] < 0].sum()) if len(non_t) else 0.0
+        # neg_sum = float(delta[non_t][delta[non_t] < 0].sum()) if len(non_t) else 0.0
 
-        # if not feasible:
-        #     fit = -1e9
-        # else:
-        #     fit = neg_sum  # maximize (best is 0, worst more negative)
+        # # if not feasible:
+        # #     fit = -1e9
+        # # else:
+        # #     fit = neg_sum  # maximize (best is 0, worst more negative)
 
-        # shortfall <= 0 means not meeting eps on targets
-        shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
+        # # shortfall <= 0 means not meeting eps on targets
+        # shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
         
         eps = float(args.eps)
         
