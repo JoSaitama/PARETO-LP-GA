@@ -282,22 +282,57 @@ def main():
         
         w = torch.from_numpy(w_np).to(device)
 
-        # train one weighted epoch from epoch-e
-        model = ResNet9(num_classes=K).to(device)
-        model.load_state_dict(model_e.state_dict())
+        # # train one weighted epoch from epoch-e
+        # model = ResNet9(num_classes=K).to(device)
+        # model.load_state_dict(model_e.state_dict())
 
+        # optimizer = optim.SGD(
+        #     model.parameters(),
+        #     lr=cfg.lr,
+        #     momentum=cfg.momentum,
+        #     weight_decay=cfg.weight_decay,
+        # )
+        # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1)
+        # scaler = GradScaler("cuda", enabled=cfg.use_amp)
+
+        # train_one_epoch_weighted(model, train_loader, optimizer, cfg, scaler, w)
+        # scheduler.step()
+
+        # =========================
+        # A) TRAINONEEPOCH: restore full training state from ckpt_e
+        # =========================
+        model = ResNet9(num_classes=K).to(device)
+        model.load_state_dict(ckpt_e["model_state"])   # <- IMPORTANT: load from ckpt dict, not model_e copy
+        
+        # Rebuild optimizer/scheduler exactly like run_train_snapshots.py
         optimizer = optim.SGD(
             model.parameters(),
-            lr=cfg.lr,
-            momentum=cfg.momentum,
-            weight_decay=cfg.weight_decay,
+            lr=float(ckpt_e.get("cfg", {}).get("lr", cfg.lr)),
+            momentum=float(ckpt_e.get("cfg", {}).get("momentum", cfg.momentum)),
+            weight_decay=float(ckpt_e.get("cfg", {}).get("weight_decay", cfg.weight_decay)),
         )
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1)
+        
+        # Load optimizer state if present (should be present if ckpt made by run_train_snapshots.py)
+        if "optimizer_state" in ckpt_e and ckpt_e["optimizer_state"] is not None:
+            optimizer.load_state_dict(ckpt_e["optimizer_state"])
+        
+        # Scheduler must match training script: CosineAnnealingLR(T_max=cfg.epochs)
+        tmax = int(ckpt_e.get("cfg", {}).get("epochs", 1))
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(1, tmax))
+        
+        if "scheduler_state" in ckpt_e and ckpt_e["scheduler_state"] is not None:
+            scheduler.load_state_dict(ckpt_e["scheduler_state"])
+        
+        # AMP scaler restore
         scaler = GradScaler("cuda", enabled=cfg.use_amp)
-
+        if cfg.use_amp and ("scaler_state" in ckpt_e) and (ckpt_e["scaler_state"] is not None):
+            scaler.load_state_dict(ckpt_e["scaler_state"])
+        
+        # One weighted epoch, then step scheduler exactly once (like baseline e -> e+1)
         train_one_epoch_weighted(model, train_loader, optimizer, cfg, scaler, w)
         scheduler.step()
 
+    
         after = evaluate_indexed(model, test_loader, cfg)
         after_pc = np.array(after["per_class_acc"], dtype=np.float32)
         delta = after_pc - orig_pc
@@ -323,16 +358,31 @@ def main():
         # shortfall <= 0 means not meeting eps on targets
         shortfall = np.minimum(delta[t_arr] - eps, 0.0).astype(np.float32)
         
-        feasible = bool(np.all(delta[t_arr] >= eps))
+        eps = float(args.eps)
         
-        base = float(delta[t_arr].mean() + neg_sum)  # meaningful when feasible
-        violation = float(-shortfall.sum())          # >=0, smaller is better
+        # =========================
+        # B) Fitness exactly as paper Algorithm 1 Line 7
+        #   - feasible: all target deltas must be > 0 (or >= eps if you set eps)
+        #   - if infeasible -> -inf (use large negative)
+        #   - else fitness = mean of negative deltas over non-target classes (best is 0)
+        # =========================
+        t_arr = np.array(targets, dtype=np.int64)
         
-        if feasible:
-            fit = 1000.0 + base
+        # paper uses "positive improvement"; with eps=0.0 this is strict >0.
+        # If you want strict, use: delta[t_arr] > eps
+        feasible = bool(np.all(delta[t_arr] > eps))
+        
+        target_set = set(targets)
+        non_t = [k for k in range(K) if k not in target_set]
+        
+        neg = delta[non_t][delta[non_t] < 0] if len(non_t) else np.array([], dtype=np.float32)
+        neg_sum = float(neg.sum()) if neg.size else 0.0
+        
+        if not feasible:
+            fit = -1e9
         else:
-            # primary: minimize violation; secondary: less harm to non-target
-            fit = -1000.0 - violation + 0.01 * float(neg_sum)
+            fit = float(neg.mean()) if neg.size else 0.0   # maximize (closest to 0 is best)
+
 
 
         worst_non_t = float(delta[non_t].min()) if len(non_t) else 0.0
