@@ -289,7 +289,7 @@ def main():
         #     steps=args.opt_steps,
         #     seed=int(args.seed),  # keep fixed for stable fitness ranking
         # )
-        w_np = solve_weights_soft(P, targets, alpha, w_max=float(args.w_max))
+        w_np,_ = solve_weights_soft(P, targets, alpha, w_max=float(args.w_max))
         # DEBUG
         if (not np.all(np.isfinite(w_np))) or (w_np.ndim != 1):
             rec = {"alpha": alpha.tolist(), "fitness": -1e6, "feasible": False,
