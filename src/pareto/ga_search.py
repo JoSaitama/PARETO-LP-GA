@@ -32,7 +32,7 @@ def sample_alpha(K: int, target_classes, rng: np.random.Generator) -> np.ndarray
     Paper-consistent: alpha_k in [0,1].
     Keep diversity while slightly biasing targets upward.
     """
-    a = rng.uniform(0.0, 1.0, size=K).astype(np.float32)
+    a = rng.uniform(0.85, 1.0, size=K).astype(np.float32)
 
     # bias targets to be larger, but still within [0,1]
     for t in target_classes:
