@@ -281,7 +281,9 @@ def main():
 
         
         w = torch.from_numpy(w_np).to(device)
-
+        # for debug
+        w = torch.ones_like(w)
+        
         # # train one weighted epoch from epoch-e
         # model = ResNet9(num_classes=K).to(device)
         # model.load_state_dict(model_e.state_dict())
