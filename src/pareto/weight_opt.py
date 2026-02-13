@@ -31,6 +31,7 @@ def solve_weights_lp_dual(
     """
     rng = np.random.default_rng(seed)
     P = np.asarray(P, dtype=np.float64)
+    P = -P   # IMPORTANT: align sign with paper's definition of "beneficial influence"
     N, K = P.shape
     alpha = np.asarray(alpha, dtype=np.float64).reshape(-1)
     if alpha.size != K:
@@ -194,8 +195,8 @@ def solve_weights_soft(P, targets, alpha, w_max=4.0, eps=1e-8):
     a_t = float(np.mean(alpha[targets]))
     a_t = float(np.clip(a_t, 0.0, 2.0))
 
-    # keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
-    keep_ratio = 0.2
+    keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
+    # keep_ratio = 0.2
     thr = float(np.quantile(c, 1.0 - keep_ratio))
 
     c_max = float(c.max())
