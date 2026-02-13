@@ -122,12 +122,41 @@ def solve_weights_projected(
     )
 
 
-def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
-    N, K = P.shape
-    c = P[:, targets].sum(axis=1)              # [N]
-    c = (c - c.min()) / (c.max() - c.min() + eps)
-    a = float(np.mean(alpha[targets]))         # scalar aggressiveness
-    a = max(0.05, a)
-    w = 1.0 + (w_max - 1.0) * (c ** (1.0 / a))
-    return w.astype(np.float32), {"mode": "soft"}
+# def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
+#     N, K = P.shape
+#     c = P[:, targets].sum(axis=1)              # [N]
+#     c = (c - c.min()) / (c.max() - c.min() + eps)
+#     a = float(np.mean(alpha[targets]))         # scalar aggressiveness
+#     a = max(0.05, a)
+#     w = 1.0 + (w_max - 1.0) * (c ** (1.0 / a))
+#     return w.astype(np.float32), {"mode": "soft"}
 
+def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
+    """
+    Make w depend strongly on target alpha:
+    - compute score c from target influences
+    - keep top-q fraction (q depends on alpha_targets) as high weight, others low weight
+    This yields a sharp, alpha-sensitive weighting and makes GA differences visible.
+    """
+    N, K = P.shape
+    c = P[:, targets].sum(axis=1).astype(np.float32)  # [N]
+
+    # Normalize scores to [0,1] for stability
+    c = (c - c.min()) / (c.max() - c.min() + eps)
+
+    # Aggressiveness controlled by alpha on target classes
+    a_t = float(np.mean(alpha[targets]))
+    a_t = np.clip(a_t, 0.0, 2.0)  # since you clip to 2 now
+
+    # Map alpha -> keep_ratio in (0.1, 0.9)
+    # higher alpha => more selective => smaller keep_ratio => more extreme reweighting
+    keep_ratio = float(np.clip(0.9 - 0.35 * a_t, 0.10, 0.90))
+
+    thr = float(np.quantile(c, 1.0 - keep_ratio))  # top keep_ratio gets high weight
+    high = (c >= thr).astype(np.float32)
+
+    w_low = 1.0
+    w_high = float(w_max)
+
+    w = w_low + (w_high - w_low) * high  # {1, w_max}
+    return w.astype(np.float32), {"mode": "soft_quantile", "keep_ratio": keep_ratio, "thr": thr}
