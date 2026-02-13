@@ -114,5 +114,5 @@ def solve_weights_projected(
         lr=lr,
         seed=seed,
         tol=1e-6,
-        normalize_mean_to_1=True,
+        normalize_mean_to_1=False,
     )
