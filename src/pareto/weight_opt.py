@@ -46,6 +46,7 @@ def solve_weights_lp_dual(
 
     print("[LP_debug] alpha min/max:", float(alpha.min()), float(alpha.max()))
     print("[LP_debug] b min/max/mean:", float(b.min()), float(b.max()), float(b.mean()))
+    print("[LP_debug] S per class:", S)
 
     
     # dual vars y >= 0
