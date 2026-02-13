@@ -282,7 +282,7 @@ def main():
         
         w = torch.from_numpy(w_np).to(device)
         # for debug
-        w = torch.ones_like(w)
+        # w = torch.ones_like(w)
         
         # # train one weighted epoch from epoch-e
         # model = ResNet9(num_classes=K).to(device)
@@ -442,6 +442,11 @@ def main():
                 f"mean_target={rec['mean_target']:.4f} neg_sum={rec['neg_sum']:.4f} "
                 f"worst_non_target={rec['worst_non_target']:.4f}"
             )
+            print("for debug w_stats:",
+                  float(w_np.min()), float(w_np.max()), float(w_np.mean()),
+                  "nz%", float((w_np > 0).mean()),
+                  "at_wmax%", float((w_np >= float(args.w_max) - 1e-6).mean()))
+
             if i < 5:
                 print("alpha_stats", float(alpha.min()), float(alpha.max()), float(alpha.mean()))
 
