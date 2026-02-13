@@ -139,7 +139,7 @@ def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
     This yields a sharp, alpha-sensitive weighting and makes GA differences visible.
     """
     N, K = P.shape
-    c = P[:, targets].sum(axis=1).astype(np.float32)  # [N]
+    c = - P[:, targets].sum(axis=1).astype(np.float32)  # [N]
 
     # Normalize scores to [0,1] for stability
     c = (c - c.min()) / (c.max() - c.min() + eps)
