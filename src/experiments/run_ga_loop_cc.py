@@ -290,6 +290,19 @@ def main():
             seed=int(args.seed),  # keep fixed for stable fitness ranking
         )
         # w_np,_ = solve_weights_soft(P, targets, alpha, w_max=float(args.w_max))
+
+        # =========================
+        # IMPORTANT FIX (paper-consistent reweight, NOT filtering):
+        # hard LP often returns {0, w_max}. If we keep zeros, training uses only a tiny subset
+        # -> catastrophic forgetting (your -90% non-target collapse).
+        # Convert zeros to 1.0 so non-selected samples still contribute normally.
+        # =========================
+        w_np = np.asarray(w_np, dtype=np.float32).reshape(-1)
+        w_np = np.where(w_np > 0.0, w_np, 1.0).astype(np.float32)
+        
+        # debug: how many are boosted to w_max
+        high = float((w_np >= (float(args.w_max) - 1e-6)).mean())
+
         # DEBUG
         if (not np.all(np.isfinite(w_np))) or (w_np.ndim != 1):
             rec = {"alpha": alpha.tolist(), "fitness": -1e6, "feasible": False,
