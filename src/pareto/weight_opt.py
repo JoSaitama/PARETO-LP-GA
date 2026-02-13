@@ -131,34 +131,73 @@ def solve_weights_projected(
 #     w = 1.0 + (w_max - 1.0) * (c ** (1.0 / a))
 #     return w.astype(np.float32), {"mode": "soft"}
 
-def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
+# def solve_weights_soft(P, targets, alpha, w_max=8.0, eps=1e-8):
+#     """
+#     Make w depend strongly on target alpha:
+#     - compute score c from target influences
+#     - keep top-q fraction (q depends on alpha_targets) as high weight, others low weight
+#     This yields a sharp, alpha-sensitive weighting and makes GA differences visible.
+#     """
+#     N, K = P.shape
+#     # c = - P[:, targets].sum(axis=1).astype(np.float32)  # [N]
+#     target_set = set(targets)
+#     non_t = [k for k in range(P.shape[1]) if k not in target_set]
+    
+#     score_t = (-P[:, targets].sum(axis=1)).astype(np.float32)   # beneficial for targets (after sign fix)
+#     score_nt = (P[:, non_t].sum(axis=1)).astype(np.float32)     # proxy of harming others (depends on your P meaning)
+    
+#     beta = 0.5  # start with 0.5, try 1.0 if still bad
+#     c = score_t - beta * score_nt
+
+
+#     # Normalize scores to [0,1] for stability
+#     c = (c - c.min()) / (c.max() - c.min() + eps)
+
+#     # Aggressiveness controlled by alpha on target classes
+#     a_t = float(np.mean(alpha[targets]))
+#     a_t = np.clip(a_t, 0.0, 2.0)  # since you clip to 2 now
+
+#     # Map alpha -> keep_ratio in (0.1, 0.9)
+#     # higher alpha => more selective => smaller keep_ratio => more extreme reweighting
+#     # keep_ratio = float(np.clip(0.9 - 0.35 * a_t, 0.10, 0.90))
+#     keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
+
+
+#     thr = float(np.quantile(c, 1.0 - keep_ratio))  # top keep_ratio gets high weight
+#     high = (c >= thr).astype(np.float32)
+
+#     w_low = 1.0
+#     w_high = float(w_max)
+
+#     w = w_low + (w_high - w_low) * high  # {1, w_max}
+#     return w.astype(np.float32), {"mode": "soft_quantile", "keep_ratio": keep_ratio, "thr": thr}
+
+def solve_weights_soft(P, targets, alpha, w_max=4.0, eps=1e-8):
     """
-    Make w depend strongly on target alpha:
-    - compute score c from target influences
-    - keep top-q fraction (q depends on alpha_targets) as high weight, others low weight
-    This yields a sharp, alpha-sensitive weighting and makes GA differences visible.
+    Score = target benefit - beta * non-target harm
+    Then pick top keep_ratio region, use continuous weights to avoid harsh shifts.
     """
     N, K = P.shape
-    c = - P[:, targets].sum(axis=1).astype(np.float32)  # [N]
 
-    # Normalize scores to [0,1] for stability
+    target_set = set(targets)
+    non_t = [k for k in range(K) if k not in target_set]
+
+    score_t = (-P[:, targets].sum(axis=1)).astype(np.float32)  # beneficial for targets
+    score_nt = (P[:, non_t].sum(axis=1)).astype(np.float32) if len(non_t) else 0.0
+
+    beta = 0.5
+    c = score_t - beta * score_nt
+
+    # normalize to [0,1]
     c = (c - c.min()) / (c.max() - c.min() + eps)
 
-    # Aggressiveness controlled by alpha on target classes
     a_t = float(np.mean(alpha[targets]))
-    a_t = np.clip(a_t, 0.0, 2.0)  # since you clip to 2 now
+    a_t = float(np.clip(a_t, 0.0, 2.0))
 
-    # Map alpha -> keep_ratio in (0.1, 0.9)
-    # higher alpha => more selective => smaller keep_ratio => more extreme reweighting
-    # keep_ratio = float(np.clip(0.9 - 0.35 * a_t, 0.10, 0.90))
     keep_ratio = float(np.clip(0.35 - 0.15 * a_t, 0.05, 0.35))
+    thr = float(np.quantile(c, 1.0 - keep_ratio))
 
+    # continuous weight from 1 to w_max for samples above threshold
+    w = 1.0 + (w_max - 1.0) * np.clip((c - thr) / (1.0 - thr + 1e-8), 0.0, 1.0)
 
-    thr = float(np.quantile(c, 1.0 - keep_ratio))  # top keep_ratio gets high weight
-    high = (c >= thr).astype(np.float32)
-
-    w_low = 1.0
-    w_high = float(w_max)
-
-    w = w_low + (w_high - w_low) * high  # {1, w_max}
-    return w.astype(np.float32), {"mode": "soft_quantile", "keep_ratio": keep_ratio, "thr": thr}
+    return w.astype(np.float32), {"mode": "soft_tradeoff", "keep_ratio": keep_ratio, "thr": thr, "beta": beta}
