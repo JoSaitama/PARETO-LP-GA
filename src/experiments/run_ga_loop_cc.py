@@ -281,14 +281,23 @@ def main():
         alpha = _project_alpha(alpha, args.alpha_project)
 
         # solve Line-4 LP (now real LP solver behind this call)
-        w_np = solve_weights_projected(
+        # w_np = solve_weights_projected(
+        #     P=P,
+        #     target_classes=targets,
+        #     alpha=alpha,
+        #     w_max=args.w_max,
+        #     steps=args.opt_steps,
+        #     seed=int(args.seed),  # keep fixed for stable fitness ranking
+        # )
+
+        w_np = solve_weights_hard_topk(
             P=P,
             target_classes=targets,
-            alpha=alpha,
-            w_max=args.w_max,
-            steps=args.opt_steps,
-            seed=int(args.seed),  # keep fixed for stable fitness ranking
+            alpha=alpha,               # 允许alpha是K维
+            w_max=float(args.w_max),
+            keep_ratio=0.2,            # 先固定20%，贴论文，别引入alpha依赖
         )
+
         # w_np,_ = solve_weights_soft(P, targets, alpha, w_max=float(args.w_max))
 
         # =========================
