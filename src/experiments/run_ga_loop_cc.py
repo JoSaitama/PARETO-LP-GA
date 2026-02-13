@@ -300,7 +300,7 @@ def main():
         print("for debug w_stats:",
             float(w_np.min()), float(w_np.max()), float(w_np.mean()),
             "nz%", float((w_np > 0).mean()),
-            "at_wmax%", float((w_np >= float(args.w_max) - 1e-6).mean()))
+            "high%", float((w_np >= float(args.w_max) - 1e-6).mean()))
         # for debug
         print("alpha_in_eval:", np.array(alpha, dtype=np.float32))
         w = torch.from_numpy(w_np).to(device)
