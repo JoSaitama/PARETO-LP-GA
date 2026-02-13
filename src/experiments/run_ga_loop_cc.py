@@ -37,7 +37,7 @@ def _project_alpha(alpha: np.ndarray, mode: str = "clip") -> np.ndarray:
     a = alpha.astype(np.float32)
 
     if mode == "clip":
-        return np.clip(a, 0.0, 1.0)
+        return np.clip(a, 0.0, 2.0)
 
     if mode == "none":
         return a
