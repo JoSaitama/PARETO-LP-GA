@@ -18,16 +18,6 @@ from torchvision import datasets, transforms
 from src.influence.ekfac_influence import EKFACInfluenceConfig, compute_ekfac_influence_Ptrain
 
 
-def seed_all(seed: int):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-seed_all(args.seed)
-
 def _cifar10_noaug_transforms():
     # IMPORTANT: ideally match your baseline normalization exactly.
     # CIFAR-10 common normalization:
@@ -105,7 +95,17 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
 
     args = ap.parse_args()
-
+    
+    def seed_all(seed: int):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    
+    seed_all(args.seed)
+    
     os.makedirs(args.out_dir, exist_ok=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
