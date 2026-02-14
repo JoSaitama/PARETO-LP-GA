@@ -17,12 +17,16 @@ def main():
     out_dir = os.path.join(args.inf_dir, args.out_subdir)
     os.makedirs(out_dir, exist_ok=True)
 
+    labels = np.array(train_ds.targets) 
+    
     for k in range(K):
-        s = P[:, k]
+        idx_k = np.where(labels == k)[0]   
+        s = P[idx_k, k]
         order = np.argsort(s)  # ascending
-
-        detrimental = order[:topn]      # most negative
-        beneficial  = order[-topn:]     # most positive
+        topn_k = int(round(len(idx_k) * top_frac))
+        
+        detrimental = order[:topn_k]      # most negative
+        beneficial  = order[-topn_k:]     # most positive
         # beneficial = order[:topn]      # most positive
         # detrimental  = order[-topn:]     # most negative
         
