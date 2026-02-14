@@ -301,7 +301,7 @@ def main():
                 continue
             t = int(key.split("_")[0][1:])
             x = float(cum[i, t])
-            y = -float(acc_change[i, t])
+            y = float(acc_change[i, t])
             if np.isfinite(x) and np.isfinite(y):
                 xs.append(x); ys.append(y)
     
