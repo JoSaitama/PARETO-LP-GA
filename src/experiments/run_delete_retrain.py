@@ -295,27 +295,27 @@ def main():
     save_json(os.path.join(out_dir, "meta.json"), meta)
 
     if args.sanity_no_delete:
-    print("\n[SANITY] Running retrain with NO deletion...")
-    out = retrain_once(
-        train_ds_full=train_ds_full,
-        test_loader=test_loader,
-        device=device,
-        removed_idx=np.array([], dtype=np.int64),
-        epochs=args.epochs,
-        train_batch_size=args.train_bs,
-        num_workers=args.num_workers,
-        init_state_dict=(base_state if args.init_from_ckpt else None),
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        momentum=args.momentum,
-        scheduler_type=args.scheduler,
-        ms_milestones=args.ms_milestones,
-        ms_gamma=args.ms_gamma,
-        print_every=args.print_every,
-    )
-    print("[SANITY] overall_acc:", out["best_acc"])
-    print("[SANITY] per_class_acc:", out["per_class_acc"])
-    return
+        print("\n[SANITY] Running retrain with NO deletion...")
+        out = retrain_once(
+            train_ds_full=train_ds_full,
+            test_loader=test_loader,
+            device=device,
+            removed_idx=np.array([], dtype=np.int64),
+            epochs=args.epochs,
+            train_batch_size=args.train_bs,
+            num_workers=args.num_workers,
+            init_state_dict=(base_state if args.init_from_ckpt else None),
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            momentum=args.momentum,
+            scheduler_type=args.scheduler,
+            ms_milestones=args.ms_milestones,
+            ms_gamma=args.ms_gamma,
+            print_every=args.print_every,
+        )
+        print("[SANITY] overall_acc:", out["best_acc"])
+        print("[SANITY] per_class_acc:", out["per_class_acc"])
+        return
 
     for t in targets:
         for mode in modes:
