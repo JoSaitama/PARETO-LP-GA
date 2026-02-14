@@ -34,7 +34,8 @@ def _load_ckpt_into_model(model: nn.Module, ckpt_path: str, device: str):
 
     # Support multiple checkpoint formats
     if isinstance(ckpt, dict):
-        for key in ["state_dict", "model", "model_state_dict", "net"]:
+        # for key in ["state_dict", "model", "model_state_dict", "net"]:
+        for key in ["state_dict", "model", "model_state", "model_state_dict", "net"]:
             if key in ckpt and isinstance(ckpt[key], dict):
                 sd = ckpt[key]
                 break
@@ -50,7 +51,7 @@ def _load_ckpt_into_model(model: nn.Module, ckpt_path: str, device: str):
         nk = k.replace("module.", "") if k.startswith("module.") else k
         new_sd[nk] = v
 
-    missing, unexpected = model.load_state_dict(new_sd, strict=False)
+    missing, unexpected = model.load_state_dict(new_sd, strict=True)
     if missing:
         print("[CKPT] Missing keys (first 20):", missing[:20])
     if unexpected:
