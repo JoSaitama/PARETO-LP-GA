@@ -219,7 +219,7 @@ def compute_ekfac_influence_Ptrain(
             gtrain = _blocks_grad_vec(blocks)
             
             # Apply invF on train gradient: inv_gtrain = invF(g_train)
-            inv_gtrain = _apply_inv_to_block_grads(blocks, gtrain)
+            # inv_gtrain = _apply_inv_to_block_grads(blocks, gtrain)
             
             # # influence for each class k: - g_train^T invF g_val,k
             for k in range(K):
