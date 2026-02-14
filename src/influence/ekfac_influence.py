@@ -168,9 +168,9 @@ def compute_ekfac_influence_Ptrain(
         gval_mats_per_class.append(acc)
 
     # Precompute invF * g_val,k for each class (saves time)
-    # inv_gval_per_class: List[List[torch.Tensor]] = []
-    # for k in range(cfg.num_classes):
-    #     inv_gval_per_class.append(_apply_inv_to_block_grads(blocks, gval_mats_per_class[k]))
+    inv_gval_per_class: List[List[torch.Tensor]] = []
+    for k in range(cfg.num_classes):
+        inv_gval_per_class.append(_apply_inv_to_block_grads(blocks, gval_mats_per_class[k]))
 
     # NOTE: We apply invF on g_train (per-sample) for better numerical stability.
     # So we keep gval_mats_per_class as-is (not preconditioned).
