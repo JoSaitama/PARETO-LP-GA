@@ -11,11 +11,22 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import random
 
 from torchvision import datasets, transforms
 
 from src.influence.ekfac_influence import EKFACInfluenceConfig, compute_ekfac_influence_Ptrain
 
+
+def seed_all(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+seed_all(args.seed)
 
 def _cifar10_noaug_transforms():
     # IMPORTANT: ideally match your baseline normalization exactly.
@@ -89,6 +100,9 @@ def main():
     ap.add_argument("--mode", type=str, default="full", choices=["full", "subsample"])
     ap.add_argument("--max_train_samples", type=int, default=5000)
     ap.add_argument("--layer_filter", type=str, default="")  # "" means all layers
+
+    #seed
+    ap.add_argument("--seed", type=int, default=42)
 
     args = ap.parse_args()
 
