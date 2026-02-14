@@ -21,8 +21,8 @@ def main():
         s = P[:, k]
         order = np.argsort(s)  # ascending
 
-        # detrimental = order[:topn]      # most negative
-        # beneficial  = order[-topn:]     # most positive
+        detrimental = order[:topn]      # most negative
+        beneficial  = order[-topn:]     # most positive
         # beneficial = order[:topn]      # most positive
         # detrimental  = order[-topn:]     # most negative
         
