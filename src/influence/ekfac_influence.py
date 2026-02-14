@@ -111,7 +111,7 @@ def compute_ekfac_influence_Ptrain(
 
     # 1) Estimate EKFAC factors A and G
     factor_batches = 0
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss(reduction="mean")
 
     for x, y in train_loader:
         x = x.to(device)
