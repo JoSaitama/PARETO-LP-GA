@@ -146,7 +146,7 @@ def main():
 
     # ===== delete-retrain 专属参数 =====
     p.add_argument("--inf_dir", type=str, default="", help="Optional. If empty, auto infer from output_root.")
-    p.add_argument("--base_ckpt", type=str, default="", help="Optional. If empty, use baseline best.pt.")
+    p.add_argument("--base_ckpt", type=str, required=True, help="Required. If empty, please set the baseline best.pt.")
     p.add_argument("--out_dir", type=str, default="", help="Optional. If empty, auto infer from output_root.")
 
     p.add_argument("--targets", type=str, default="all", help='"all" or "0,1,2"')
