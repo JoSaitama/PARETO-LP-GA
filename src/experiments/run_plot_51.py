@@ -329,7 +329,7 @@ def main():
             if mode not in key:
                 continue
             for k in range(K):
-                x = -float(cum[i, k])
+                x = float(cum[i, k])
                 y = float(acc_change[i, k])
                 if np.isfinite(x) and np.isfinite(y):
                     xs.append(x); ys.append(y)
