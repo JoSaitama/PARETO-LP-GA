@@ -23,7 +23,11 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=16)
+    p.add_argument("--lr", type=float, default=0.01)
+    p.add_argument("--weight_decay", type=float, default=0.0001)
+    p.add_argument("--momentum", type=float, default=0.9)
     p.add_argument("--batch_size", type=int, default=128)
+    p.add_argument("--num_class", type=int, default=10)
     p.add_argument("--eval_batch_size", type=int, default=1024)
     p.add_argument("--num_workers", type=int, default=2)
     p.add_argument("--data_root", type=str, required=True)
@@ -52,8 +56,8 @@ def main():
     test_loader = DataLoader(test_ds, batch_size=args.eval_batch_size, shuffle=False,
                              num_workers=args.num_workers, pin_memory=use_amp)
 
-    cfg = TrainConfig(epochs=args.epochs, device=device, num_classes=10, use_amp=use_amp,
-                      lr=0.1, weight_decay=5e-4, momentum=0.9)
+    cfg = TrainConfig(epochs=args.epochs, device=device, num_classes=args.num_class, use_amp=use_amp,
+                      lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
 
     model = ResNet9(num_classes=10).to(device)
     optimizer = optim.SGD(model.parameters(), lr=cfg.lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
