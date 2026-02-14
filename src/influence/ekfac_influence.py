@@ -223,7 +223,8 @@ def compute_ekfac_influence_Ptrain(
             
             # # influence for each class k: - g_train^T invF g_val,k
             for k in range(K):
-                score = -_dot_block_mats(gtrain, inv_gval_per_class[k])
+                score = _dot_block_mats(gtrain, inv_gval_per_class[k])
+                # score = -_dot_block_mats(gtrain, inv_gval_per_class[k])
                 P[batch_indices[bi], k] = float(score)
             
             # influence for each class k: - (invF g_train)^T g_val,k
