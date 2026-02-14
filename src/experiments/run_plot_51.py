@@ -102,8 +102,8 @@ def _rebuild_mats(obj: dict, K: int = 10):
         base = np.array(r.get("baseline_per_class", [np.nan]*K), dtype=np.float32)
         new = np.array(r.get("per_class_acc", [np.nan]*K), dtype=np.float32)
         if np.isfinite(base).all() and np.isfinite(new).all():
-            # acc_change[i] = new - base
-            acc_change[i] = base - new
+            acc_change[i] = new - base
+            # acc_change[i] = base - new
 
         # cum influence: if stored, use it; else leave nan
         # your run_delete_retrain currently doesn't persist per-row cum vector in json,
@@ -300,8 +300,8 @@ def main():
             if mode not in key:
                 continue
             t = int(key.split("_")[0][1:])
-            x = -float(cum[i, t])
-            y = float(acc_change[i, t])
+            x = float(cum[i, t])
+            y = -float(acc_change[i, t])
             if np.isfinite(x) and np.isfinite(y):
                 xs.append(x); ys.append(y)
     
