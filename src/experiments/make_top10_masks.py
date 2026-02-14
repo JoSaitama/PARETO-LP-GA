@@ -21,9 +21,11 @@ def main():
         s = P[:, k]
         order = np.argsort(s)  # ascending
 
-        detrimental = order[:topn]      # most negative
-        beneficial  = order[-topn:]     # most positive
-
+        # detrimental = order[:topn]      # most negative
+        # beneficial  = order[-topn:]     # most positive
+        beneficial = order[:topn]      # most negative
+        detrimental  = order[-topn:]     # most positive
+        
         np.save(os.path.join(out_dir, f"class{k}_beneficial.npy"), beneficial.astype(np.int64))
         np.save(os.path.join(out_dir, f"class{k}_detrimental.npy"), detrimental.astype(np.int64))
 
