@@ -177,7 +177,9 @@ def compute_ekfac_influence_Ptrain(
 
 
     # 3) Compute P_train (per-sample or subsample)
-    model.train()
+    # model.train()
+    model.eval()
+    torch.set_grad_enabled(True)
     # Determine N
     N = len(train_loader.dataset)
     K = cfg.num_classes
