@@ -24,6 +24,7 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=16)
     p.add_argument("--batch_size", type=int, default=128)
+    p.add_argument("--eval_batch_size", type=int, default=1024)
     p.add_argument("--num_workers", type=int, default=2)
     p.add_argument("--data_root", type=str, required=True)
     p.add_argument("--out_dir", type=str, required=True)
@@ -48,7 +49,7 @@ def main():
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
                               num_workers=args.num_workers, pin_memory=use_amp)
-    test_loader = DataLoader(test_ds, batch_size=256, shuffle=False,
+    test_loader = DataLoader(test_ds, batch_size=args.eval_batch_size, shuffle=False,
                              num_workers=args.num_workers, pin_memory=use_amp)
 
     cfg = TrainConfig(epochs=args.epochs, device=device, num_classes=10, use_amp=use_amp,
