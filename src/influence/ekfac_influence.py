@@ -168,9 +168,13 @@ def compute_ekfac_influence_Ptrain(
         gval_mats_per_class.append(acc)
 
     # Precompute invF * g_val,k for each class (saves time)
-    inv_gval_per_class: List[List[torch.Tensor]] = []
-    for k in range(cfg.num_classes):
-        inv_gval_per_class.append(_apply_inv_to_block_grads(blocks, gval_mats_per_class[k]))
+    # inv_gval_per_class: List[List[torch.Tensor]] = []
+    # for k in range(cfg.num_classes):
+    #     inv_gval_per_class.append(_apply_inv_to_block_grads(blocks, gval_mats_per_class[k]))
+
+    # NOTE: We apply invF on g_train (per-sample) for better numerical stability.
+    # So we keep gval_mats_per_class as-is (not preconditioned).
+
 
     # 3) Compute P_train (per-sample or subsample)
     model.train()
@@ -213,10 +217,18 @@ def compute_ekfac_influence_Ptrain(
             loss.backward()
 
             gtrain = _blocks_grad_vec(blocks)
-
-            # influence for each class k: - g_train^T invF g_val,k
+            
+            # Apply invF on train gradient: inv_gtrain = invF(g_train)
+            inv_gtrain = _apply_inv_to_block_grads(blocks, gtrain)
+            
+            # # influence for each class k: - g_train^T invF g_val,k
+            # for k in range(K):
+            #     score = -_dot_block_mats(gtrain, inv_gval_per_class[k])
+            #     P[batch_indices[bi], k] = float(score)
+            
+            # influence for each class k: - (invF g_train)^T g_val,k
             for k in range(K):
-                score = -_dot_block_mats(gtrain, inv_gval_per_class[k])
+                score = -_dot_block_mats(inv_gtrain, gval_mats_per_class[k])
                 P[batch_indices[bi], k] = float(score)
 
     # close hooks
