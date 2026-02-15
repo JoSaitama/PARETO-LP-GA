@@ -72,8 +72,8 @@ def solve_weights_lp_dual(
 
     # step size schedule (helps stability)
     def step_size(t: int) -> float:
-        # return lr / np.sqrt(t + 1.0)
-        return lr / (1.0 + 0.001 * t)
+        return lr / np.sqrt(t + 1.0)
+        # return lr / (1.0 + 0.001 * t)
 
     for t in range(int(steps)):
         # scores s_i = c_i + (P y)_i
