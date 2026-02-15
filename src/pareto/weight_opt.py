@@ -44,7 +44,10 @@ def solve_weights_lp_dual(
         raise ValueError(f"alpha must have shape ({K},), got {alpha.shape}")
 
     # c_i = sum over target classes
-    c = P[:, target_classes].sum(axis=1)  # [N]
+    # c = P[:, target_classes].sum(axis=1)  # [N]
+    a_t = alpha[target_classes]                  # 取目标类的 alpha
+    c = P[:, target_classes] @ a_t               # c_i = sum_{t in target} alpha_t * P_{i,t}
+
 
     # b_k = alpha_k * sum_i P_{i,k}
     S = P.sum(axis=0)                     # [K]
