@@ -80,11 +80,35 @@ def _fitness_from_delta(
     return s / float(len(non))
 
 
+# def _load_ckpt_into_model(model: torch.nn.Module, ckpt_path: str, device: str) -> None:
+#     ckpt = torch.load(ckpt_path, map_location=device)
+#     # expected format from your training scripts: {"model": state_dict, ...}
+#     state = ckpt["model"] if isinstance(ckpt, dict) and "model" in ckpt else ckpt
+#     model.load_state_dict(state, strict=True)
+
 def _load_ckpt_into_model(model: torch.nn.Module, ckpt_path: str, device: str) -> None:
     ckpt = torch.load(ckpt_path, map_location=device)
-    # expected format from your training scripts: {"model": state_dict, ...}
-    state = ckpt["model"] if isinstance(ckpt, dict) and "model" in ckpt else ckpt
-    model.load_state_dict(state, strict=True)
+
+    if not isinstance(ckpt, dict) or "model_state" not in ckpt:
+        raise RuntimeError(
+            f"Checkpoint format unexpected. Need dict with key 'model_state'. "
+            f"Got type={type(ckpt)} keys={list(ckpt.keys()) if isinstance(ckpt, dict) else None}"
+        )
+
+    state = ckpt["model_state"]
+
+    # Handle DataParallel prefix "module." if present
+    if len(state) > 0:
+        k0 = next(iter(state.keys()))
+        if k0.startswith("module."):
+            state = {k.replace("module.", "", 1): v for k, v in state.items()}
+
+    missing, unexpected = model.load_state_dict(state, strict=True)
+    # strict=True normally yields empty missing/unexpected; keep prints for safety
+    if missing:
+        print("[CKPT] Missing keys (unexpected):", missing[:20])
+    if unexpected:
+        print("[CKPT] Unexpected keys (unexpected):", unexpected[:20])
 
 
 def _compute_delta_pct(acc_before: np.ndarray, acc_after: np.ndarray) -> np.ndarray:
