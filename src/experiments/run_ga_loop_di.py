@@ -188,9 +188,9 @@ def main() -> None:
 
     # ----- load P -----
     P = np.load(args.P_train)  # [N, K]
-    scale = np.max(np.abs(P))
-    # if scale > 0:
-    P = P / scale
+    # scale = np.max(np.abs(P))
+    # # if scale > 0:
+    # P = P / scale
 
     # for debug
     print("[P_train: run_ga_loop_di] min/max/mean:", float(P.min()), float(P.max()), float(P.mean()))
