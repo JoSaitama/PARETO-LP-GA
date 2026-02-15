@@ -93,7 +93,8 @@ def solve_weights_lp_dual(
         # subgradient for dual (minimization): g = (A w - b)
         # update y <- [y - eta * (Aw - b)]_+
         eta = step_size(t)
-        y = y - eta * (Aw - b)
+        # y = y - eta * (Aw - b)
+        y = y + eta * (Aw - b)
         y = np.maximum(y, 0.0)
     
     print("[LP_debug: weight_opt] best_violation:", best_violation)
