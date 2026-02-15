@@ -298,6 +298,17 @@ def main() -> None:
             after_metrics = evaluate_indexed(model, test_loader, cfg_eval)
             acc_e1 = np.array(after_metrics["per_class_acc"], dtype=np.float32)
 
+            # for debug
+            # absolute change in percentage points (pp)
+            delta_pp = (acc_e1 - acc_e) * 100.0
+            
+            # relative change (%)  —— now
+            delta_rel = 100.0 * (acc_e1 - acc_e) / np.maximum(1e-12, acc_e)
+            
+            print("[DI][debug] target acc_e  =", float(acc_e[target_classes[0]]), "acc_e1 =", float(acc_e1[target_classes[0]]))
+            print("[DI][debug] delta_pp_target =", float(delta_pp[target_classes[0]]), "delta_rel_target =", float(delta_rel[target_classes[0]]))
+
+
             # ---- Algorithm 1 line 6: delta (DI uses e -> e+1) ----
             delta = _compute_delta_pct(acc_before=acc_e, acc_after=acc_e1)  # [%]
 
