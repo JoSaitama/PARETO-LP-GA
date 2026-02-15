@@ -188,6 +188,9 @@ def main() -> None:
 
     # ----- load P -----
     P = np.load(args.P_train)  # [N, K]
+    scale = np.max(np.abs(P))
+    if scale > 0:
+        P = P / scale
 
     # for debug
     print("[P_train: run_ga_loop_di] min/max/mean:", float(P.min()), float(P.max()), float(P.mean()))
@@ -293,7 +296,8 @@ def main() -> None:
                 lr=float(args.lp_lr),
                 seed=int(args.seed + 1000 * g + i),
                 tol=float(args.eps),
-                normalize_mean_to_1=True,
+                # normalize_mean_to_1=True,
+                normalize_mean_to_1=False,
             ).astype(np.float32)  # [N]
 
             # for debug
@@ -310,10 +314,8 @@ def main() -> None:
             print(f"[LP_check: ga_loop_di] max_viol={max_viol:.4g} | worst_k={int(np.argmax(viol))}")
             
             if max_viol > 1e-3:   # 你可以先用 1e-3 或 1e-2，别用 1e-6（数值尺度太大）
-                # infeasible w: skip expensive training
-                fits[i] = -1e18
-                print(f"[Debug: ga_loop_di] [gen {g+1} cand {i}] infeasible(LP) skip training")
-                continue
+                print(f"[Warn] LP not feasible enough (max_viol={max_viol:.3e}), still training for now.")
+
 
 
             # save weights for reproducibility
