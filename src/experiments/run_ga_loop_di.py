@@ -296,8 +296,8 @@ def main() -> None:
                 lr=float(args.lp_lr),
                 seed=int(args.seed + 1000 * g + i),
                 tol=float(args.eps),
-                # normalize_mean_to_1=True,
-                normalize_mean_to_1=False,
+                normalize_mean_to_1=True,
+                # normalize_mean_to_1=False,
             ).astype(np.float32)  # [N]
 
             # for debug
