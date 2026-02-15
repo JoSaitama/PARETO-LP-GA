@@ -6,7 +6,7 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import TwoSlopeNorm，BoundaryNorm, ListedColormap
 
 def compute_cum_from_ptrain(inf_dir: str, row_names: list[str], K: int = 10) -> np.ndarray:
     """
@@ -165,6 +165,44 @@ def _plot_heatmap(mat, row_names, title, save_path, vlim=None):
     plt.show()
 
 
+
+
+def _plot_cum_heatmap(mat, row_names, title, save_path, vlim=None):
+
+    m = np.array(mat, copy=True)
+
+    finite = np.isfinite(m)
+    if vlim is None:
+        if finite.any():
+            vmax = float(np.nanmax(np.abs(m[finite])))
+            vmax = max(vmax, 1e-6)
+        else:
+            vmax = 1.0
+        vlim = (-vmax, vmax)
+
+    norm = TwoSlopeNorm(vmin=vlim[0], vcenter=0.0, vmax=vlim[1])
+
+    K = m.shape[1]
+    R = len(row_names)
+    size = max(6, 0.6 * max(K, R))
+
+    plt.figure(figsize=(size, size))
+    im = plt.imshow(m, aspect="equal", cmap="RdBu_r", norm=norm)
+
+    plt.yticks(range(R), row_names)
+    plt.xticks(range(K), list(range(K)))
+
+    cbar = plt.colorbar(im)
+
+    # 三个位置
+    cbar.set_ticks([vlim[0]*0.8, 0, vlim[1]*0.8])
+    cbar.set_ticklabels(["Negative", "Neutral", "Positive"])
+
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=200)
+    plt.show()
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out_dir", type=str, required=True)
@@ -207,15 +245,15 @@ def main():
         _plot_heatmap(
             acc_blk,
             rn,
-            title=f"Per-class accuracy change after delete+retrain ({tag})",
+            title=f"Per-class Accuracy Changes after Removing Samples of ({tag})",
             save_path=os.path.join(out_dir, f"heatmap_acc_change_{tag}.png"),
         )
         if cum is not None:
             cum_blk = cum[idx]
-            _plot_heatmap(
+            _plot_cum_heatmap(
                 cum_blk,
                 rn,
-                title=f"Cumulative influence of removed samples ({tag})",
+                title=f"Class-wise Influences of Removed Samples of ({tag}) ",
                 save_path=os.path.join(out_dir, f"heatmap_cum_influence_{tag}.png"),
             )
 
@@ -352,7 +390,7 @@ def main():
         plt.axvline(0, linewidth=1)
         plt.title(f"{mode} class-wise (Spearman≈{rho:.3f}, N={xs.size})")
         plt.xlabel("Class-wise influences (cum over removed set)")
-        plt.ylabel("Per-class accuracy differences (%)")
+        plt.ylabel("Per-Class Accuracy Differences (%)")
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, save_name), dpi=300)
         plt.show()
