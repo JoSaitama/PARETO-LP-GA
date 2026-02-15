@@ -231,8 +231,8 @@ def main() -> None:
     # print("[DI] epoch-e per-class:", np.round(acc_e * 100.0, 2))
     print("[DI] ckpt_e per-class acc (%):")
     for k, v in enumerate(acc_e):
-        print(f"  class {k:2d}: {v*100:.2f}")
-    print(f"[DI] ckpt_e mean acc (%): {acc_e.mean()*100:.2f}")
+        print(f"  class {k:2d}: {v:.2f}")
+    print(f"[DI] ckpt_e mean acc (%): {acc_e.mean():.2f}")
 
 
     # ----- GA init population of alpha -----
