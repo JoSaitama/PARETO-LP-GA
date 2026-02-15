@@ -58,7 +58,7 @@ def _fitness_from_delta(
     """
     Paper Algorithm 1 line 7 fitness:
       If ANY target class has Δ <= 0 => fitness = -inf
-      Else fitness = (1/|C\Ctarget|) * sum_{k not in target} 1[Δ_k < 0] * Δ_k
+      Else fitness = (1/|C\\Ctarget|) * sum_{k not in target} 1[Δ_k < 0] * Δ_k
     i.e. maximize (close to 0) non-target degradation, under strict target improvement.
     """
     K = int(delta.shape[0])
@@ -114,7 +114,9 @@ def main() -> None:
     ap.add_argument("--batch_size", type=int, default=512)
     ap.add_argument("--eval_batch_size", type=int, default=1024)
     ap.add_argument("--num_workers", type=int, default=2)
-    ap.add_argument("--device", type=str, default="cuda")
+    # ap.add_argument("--device", type=str, default="cuda")
+    ap.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
+
 
     # GA
     ap.add_argument("--pop", type=int, default=30)
@@ -137,6 +139,11 @@ def main() -> None:
     ap.add_argument("--use_amp", type=int, default=1)
 
     args = ap.parse_args()
+    # ---- device auto-selection ----
+    if args.device == "auto":
+        args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("[Device]", args.device, "| cuda_available=", torch.cuda.is_available())
+
     ensure_dir(args.out_dir)
 
     set_seed(args.seed)
@@ -144,6 +151,7 @@ def main() -> None:
 
     target_classes = [int(x) for x in args.targets.split(",") if x.strip() != ""]
     print("[DI] target_classes =", target_classes)
+
 
     # ----- load P -----
     P = np.load(args.P_train)  # [N, K]
@@ -196,7 +204,12 @@ def main() -> None:
     )
     base_metrics = evaluate_indexed(base_model, test_loader, cfg_eval)
     acc_e = np.array(base_metrics["per_class_acc"], dtype=np.float32)
-    print("[DI] epoch-e per-class:", np.round(acc_e * 100.0, 2))
+    # print("[DI] epoch-e per-class:", np.round(acc_e * 100.0, 2))
+    print("[DI] ckpt_e per-class acc (%):")
+    for k, v in enumerate(acc_e):
+        print(f"  class {k:2d}: {v*100:.2f}")
+    print(f"[DI] ckpt_e mean acc (%): {acc_e.mean()*100:.2f}")
+
 
     # ----- GA init population of alpha -----
     population = [sample_alpha(K=K, target_classes=target_classes, rng=rng) for _ in range(int(args.pop))]
