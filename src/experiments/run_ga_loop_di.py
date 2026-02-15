@@ -113,8 +113,9 @@ def _load_ckpt_into_model(model: torch.nn.Module, ckpt_path: str, device: str) -
 
 def _compute_delta_pct(acc_before: np.ndarray, acc_after: np.ndarray) -> np.ndarray:
     """
-    Relative change in performance (percentage):
+    Paper (Alg.1 line 6 / Table1 Change(%)):
       Δ_k = 100 * (acc_after - acc_before) / max(eps, acc_before)
+    Note: acc_before/after are in 0..100 scale (percent), so this returns percent change (%).
     """
     eps = 1e-12
     return (100.0 * (acc_after - acc_before) / np.maximum(eps, acc_before)).astype(np.float32)
