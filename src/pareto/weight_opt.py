@@ -103,8 +103,7 @@ def solve_weights_lp_dual(
         # check constraint satisfaction
         Aw = P.T @ w  # [K]
         viol = b - Aw
-        # viol_pos = np.maximum(0.0, viol)
-        viol_pos = np.maximum(0.0, (alpha * P.sum(axis=0)) - Aw)
+        viol_pos = np.maximum(0.0, viol)
         
         # violation = float(np.max(viol_pos))  # max positive violation
         max_viol = float(np.max(viol_pos))
