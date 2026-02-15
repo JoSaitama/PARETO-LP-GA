@@ -120,6 +120,14 @@ def _compute_delta_pct(acc_before: np.ndarray, acc_after: np.ndarray) -> np.ndar
     eps = 1e-12
     return (100.0 * (acc_after - acc_before) / np.maximum(eps, acc_before)).astype(np.float32)
 
+def _compute_delta_pp(acc_before: np.ndarray, acc_after: np.ndarray) -> np.ndarray:
+    """
+    Percentage-point difference (pp):
+      Δ_k = acc_after - acc_before
+    NOTE: acc_before/after are already in 0..100 (percent), so DO NOT multiply by 100.
+    """
+    return (acc_after - acc_before).astype(np.float32)
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -319,16 +327,15 @@ def main() -> None:
 
             # for debug        
             # relative change (%)  —— now
-            delta_rel = 100.0 * (acc_e1 - acc_e) / np.maximum(1e-12, acc_e)
+            delta_rel = _compute_delta_pct(acc_before=acc_e, acc_after=acc_e1)  # [pp]
 
             # ---- debug: show pp change (acc already in 0..100 scale) ----
             t0 = int(target_classes[0])
-            delta_pp = acc_e1 - acc_e  # percentage-point difference (pp)
-            
-            print(f"[DI][debug] class {t0} acc_e={acc_e[t0]:.2f} acc_e1={acc_e1[t0]:.2f} delta_pp={delta_pp[t0]:.2f}")
-            
+            delta_pp = _compute_delta_pp(acc_before=acc_e, acc_after=acc_e1)  # [pp]
                         
             print("[DI][debug] target acc_e  =", float(acc_e[target_classes[0]]), "acc_e1 =", float(acc_e1[target_classes[0]]))
+            print(f"[DI][debug] class {t0} acc_e={acc_e[t0]:.2f} acc_e1={acc_e1[t0]:.2f} delta_pp={delta_pp[t0]:.2f} delta_rel={delta_rel[t0]:.2f}")
+            
             # print("[DI][debug] delta_pp_target =", float(delta_pp[target_classes[0]]), "delta_rel_target =", float(delta_rel[target_classes[0]]))
 
 
