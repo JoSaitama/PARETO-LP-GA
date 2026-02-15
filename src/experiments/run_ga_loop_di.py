@@ -298,7 +298,7 @@ def main() -> None:
 
             # for debug
             w_nonzero = np.mean(w > 1e-8)
-            print(f"[LP_debug] w min/max/mean: {w.min():.4g} {w.max():.4g} {w.mean():.4g} | nz_ratio={w_nonzero:.3f}")
+            print(f"[LP_debug: ga_loop_di] w min/max/mean: {w.min():.4g} {w.max():.4g} {w.mean():.4g} | nz_ratio={w_nonzero:.3f}")
 
             # ---- check LP feasibility: P^T w >= alpha * sum(P) ----
             Aw = P.T @ w.astype(np.float64)          # [K]
@@ -307,12 +307,12 @@ def main() -> None:
             viol = np.maximum(0.0, b - Aw)
             max_viol = float(np.max(viol))
             
-            print(f"[LP_check] max_viol={max_viol:.4g} | worst_k={int(np.argmax(viol))}")
+            print(f"[LP_check: ga_loop_di] max_viol={max_viol:.4g} | worst_k={int(np.argmax(viol))}")
             
             if max_viol > 1e-3:   # 你可以先用 1e-3 或 1e-2，别用 1e-6（数值尺度太大）
                 # infeasible w: skip expensive training
                 fits[i] = -1e18
-                print(f"[gen {g+1} cand {i}] infeasible(LP) skip training")
+                print(f"[Debug: ga_loop_di] [gen {g+1} cand {i}] infeasible(LP) skip training")
                 continue
 
 
@@ -348,8 +348,8 @@ def main() -> None:
             t0 = int(target_classes[0])
             delta_pp = _compute_delta_pp(acc_before=acc_e, acc_after=acc_e1)  # [pp]
                         
-            print("[DI][debug] target acc_e  =", float(acc_e[target_classes[0]]), "acc_e1 =", float(acc_e1[target_classes[0]]))
-            print(f"[DI][debug] class {t0} acc_e={acc_e[t0]:.2f} acc_e1={acc_e1[t0]:.2f} delta_pp={delta_pp[t0]:.2f} delta_rel={delta_rel[t0]:.2f}")
+            print("[DI][debug: ga_loop_di] target acc_e  =", float(acc_e[target_classes[0]]), "acc_e1 =", float(acc_e1[target_classes[0]]))
+            print(f"[DI][debug: ga_loop_di] class {t0} acc_e={acc_e[t0]:.2f} acc_e1={acc_e1[t0]:.2f} delta_pp={delta_pp[t0]:.2f} delta_rel={delta_rel[t0]:.2f}")
             
             # print("[DI][debug] delta_pp_target =", float(delta_pp[target_classes[0]]), "delta_rel_target =", float(delta_rel[target_classes[0]]))
 
