@@ -300,6 +300,21 @@ def main() -> None:
             w_nonzero = np.mean(w > 1e-8)
             print(f"[LP_debug] w min/max/mean: {w.min():.4g} {w.max():.4g} {w.mean():.4g} | nz_ratio={w_nonzero:.3f}")
 
+            # ---- check LP feasibility: P^T w >= alpha * sum(P) ----
+            Aw = P.T @ w.astype(np.float64)          # [K]
+            S = P.sum(axis=0).astype(np.float64)     # [K]
+            b = alpha.astype(np.float64) * S         # [K]
+            viol = np.maximum(0.0, b - Aw)
+            max_viol = float(np.max(viol))
+            
+            print(f"[LP_check] max_viol={max_viol:.4g} | worst_k={int(np.argmax(viol))}")
+            
+            if max_viol > 1e-3:   # 你可以先用 1e-3 或 1e-2，别用 1e-6（数值尺度太大）
+                # infeasible w: skip expensive training
+                fits[i] = -1e18
+                print(f"[gen {g+1} cand {i}] infeasible(LP) skip training")
+                continue
+
 
             # save weights for reproducibility
             w_path = os.path.join(weights_dir, f"gen{g:03d}_cand{i:03d}.npy")
