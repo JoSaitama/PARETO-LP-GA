@@ -180,6 +180,19 @@ def main() -> None:
 
     # ----- load P -----
     P = np.load(args.P_train)  # [N, K]
+
+    # for debug
+    print("[P_train: run_ga_loop_di] min/max/mean:", float(P.min()), float(P.max()), float(P.mean()))
+    print("[P_train: run_ga_loop_di] per-class sum (S):", np.round(P.sum(axis=0), 2))
+    print("[P_train: run_ga_loop_di] pos_ratio:", np.round((P > 0).mean(axis=0), 3))
+    print("[P_train: run_ga_loop_di] neg_ratio:", np.round((P < 0).mean(axis=0), 3))
+    
+    for t in target_classes:
+        col = P[:, int(t)]
+        qs = np.quantile(col, [0.0, 0.01, 0.05, 0.5, 0.95, 0.99, 1.0])
+        print(f"[P_train: run_ga_loop_di] target {t} quantiles:", np.round(qs, 4))
+
+    
     if P.ndim != 2:
         raise ValueError(f"P must be [N,K], got shape {P.shape}")
     N, K = P.shape
