@@ -31,6 +31,11 @@ def solve_weights_lp_dual(
     """
     rng = np.random.default_rng(seed)
     P = np.asarray(P, dtype=np.float64)
+
+    # debug for P scale
+    p_scale = np.max(np.abs(P)) + 1e-12
+    # if scale > 0:
+    P = P / scale
     
     # P = -P  # DO NOT flip here for EKFAC-based P_train (already beneficial-positive)
     N, K = P.shape
@@ -53,14 +58,16 @@ def solve_weights_lp_dual(
     # dual vars y >= 0
     y = np.zeros(K, dtype=np.float64)
     # tiny noise to break ties in early iterations (optional)
-    y += 1e-6 * rng.standard_normal(K)
+    y += 1e-4 * rng.standard_normal(K)
+    y = np.maximum(y, 0.0)
 
     best_w = np.zeros(N, dtype=np.float64)
     best_violation = float("inf")
 
     # step size schedule (helps stability)
     def step_size(t: int) -> float:
-        return lr / np.sqrt(t + 1.0)
+        # return lr / np.sqrt(t + 1.0)
+        return lr / (1.0 + 0.001 * t)
 
     for t in range(int(steps)):
         # scores s_i = c_i + (P y)_i
@@ -77,6 +84,7 @@ def solve_weights_lp_dual(
         viol = b - Aw
         viol_pos = np.maximum(0.0, viol)
         violation = float(np.max(viol_pos))  # max positive violation
+        
         S  = P.sum(axis=0)
         ratio = Aw / (S + 1e-12)
         # print("[DBG] achieved_ratio min/mean/max:",
