@@ -61,7 +61,7 @@ def solve_weights_lp_dual(
     # dual vars y >= 0
     y = np.zeros(K, dtype=np.float64)
     # tiny noise to break ties in early iterations (optional)
-    y += 1e-4 * rng.standard_normal(K)
+    y += 1e-3 * rng.standard_normal(K)
     y = np.maximum(y, 0.0)
 
     best_w = np.zeros(N, dtype=np.float64)
@@ -104,8 +104,8 @@ def solve_weights_lp_dual(
         # subgradient for dual (minimization): g = (A w - b)
         # update y <- [y - eta * (Aw - b)]_+
         eta = step_size(t)
-        # y = y - eta * (Aw - b)
-        y = y + eta * (Aw - b)
+        y = y - eta * (Aw - b)
+        # y = y + eta * (Aw - b)
         y = np.maximum(y, 0.0)
     
     print("[LP_debug: weight_opt] best_violation:", best_violation)
