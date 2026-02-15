@@ -249,7 +249,7 @@ def main():
         _plot_heatmap(
             acc_blk,
             rn,
-            title=f"Per-class Accuracy Changes after Removing Samples of ({tag})",
+            title=f"Per-class Accuracy Changes after Removing {tag} Samples",
             save_path=os.path.join(out_dir, f"heatmap_acc_change_{tag}.png"),
         )
         if cum is not None:
@@ -257,7 +257,7 @@ def main():
             _plot_cum_heatmap(
                 cum_blk,
                 rn,
-                title=f"Class-wise Influences of Removed Samples of ({tag}) ",
+                title=f"Class-wise Influences of Removed {tag} Samples",
                 save_path=os.path.join(out_dir, f"heatmap_cum_influence_{tag}.png"),
             )
 
