@@ -64,7 +64,7 @@ def solve_weights_lp_dual(
     # dual vars y >= 0
     y = np.zeros(K, dtype=np.float64)
     # tiny noise to break ties in early iterations (optional)
-    y += 1e-3 * rng.standard_normal(K)
+    y += 1e-6 * rng.standard_normal(K)
     y = np.maximum(y, 0.0)
 
     best_w = np.zeros(N, dtype=np.float64)
@@ -82,25 +82,30 @@ def solve_weights_lp_dual(
 
         # primal closed-form under box constraints
         # primal closed-form under box constraints (paper): 0 <= w_i <= w_max
-        w = np.where(s > 0.0, float(w_max), 0.0).astype(np.float64)
-        # w = np.where(s < 0.0, float(w_max), 1.0).astype(np.float64)
+        jitter = 1e-12 * rng.standard_normal(N)
+        w = np.where(s + jitter > 0.0, float(w_max), 0.0).astype(np.float64)
+        # w = np.where(s > 0.0, float(w_max), 0.0).astype(np.float64)
 
         # check constraint satisfaction
         Aw = P.T @ w  # [K]
         viol = b - Aw
-        viol_pos = np.maximum(0.0, viol)
-        violation = float(np.max(viol_pos))  # max positive violation
+        # viol_pos = np.maximum(0.0, viol)
+        viol_pos = np.maximum(0.0, (alpha * P.sum(axis=0)) - Aw)
         
-        S  = P.sum(axis=0)
-        ratio = Aw / (S + 1e-12)
+        # violation = float(np.max(viol_pos))  # max positive violation
+        max_viol = float(np.max(viol_pos))
+        total_viol = float(np.sum(viol_pos)) + max_viol
+        
+        # S  = P.sum(axis=0)
+        # ratio = Aw / (S + 1e-12)
         # print("[DBG] achieved_ratio min/mean/max:",
         #       float(ratio.min()), float(ratio.mean()), float(ratio.max()))
         
-        if violation < best_violation:
-            best_violation = violation
+        if total_viol < best_violation:
+            best_violation = total_viol
             best_w = w.copy()
 
-        if (t > 200) and (violation <= tol):
+        if (max_viol <= tol):
             best_w = w
             break
 
