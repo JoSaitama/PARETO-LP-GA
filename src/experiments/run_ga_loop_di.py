@@ -193,10 +193,10 @@ def main() -> None:
     # P = P / scale
 
     # for debug
-    print("[P_train: run_ga_loop_di] min/max/mean:", float(P.min()), float(P.max()), float(P.mean()))
-    print("[P_train: run_ga_loop_di] per-class sum (S):", np.round(P.sum(axis=0), 2))
-    print("[P_train: run_ga_loop_di] pos_ratio:", np.round((P > 0).mean(axis=0), 3))
-    print("[P_train: run_ga_loop_di] neg_ratio:", np.round((P < 0).mean(axis=0), 3))
+    # print("[P_train: run_ga_loop_di] min/max/mean:", float(P.min()), float(P.max()), float(P.mean()))
+    # print("[P_train: run_ga_loop_di] per-class sum (S):", np.round(P.sum(axis=0), 2))
+    # print("[P_train: run_ga_loop_di] pos_ratio:", np.round((P > 0).mean(axis=0), 3))
+    # print("[P_train: run_ga_loop_di] neg_ratio:", np.round((P < 0).mean(axis=0), 3))
     
     for t in target_classes:
         col = P[:, int(t)]
