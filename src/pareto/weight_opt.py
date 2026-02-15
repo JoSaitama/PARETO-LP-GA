@@ -52,7 +52,10 @@ def solve_weights_lp_dual(
 
     print("[LP_debug] alpha min/max:", float(alpha.min()), float(alpha.max()))
     print("[LP_debug] b min/max/mean:", float(b.min()), float(b.max()), float(b.mean()))
-    print("[LP_debug] S per class:", S)
+    print("[P_train: weight_opt] min/max/mean:", float(P.min()), float(P.max()), float(P.mean()))
+    print("[P_train: weight_opt] per-class sum (S):", np.round(P.sum(axis=0), 2))
+    print("[P_train: weight_opt] pos_ratio:", np.round((P > 0).mean(axis=0), 3))
+    print("[P_train: weight_opt] neg_ratio:", np.round((P < 0).mean(axis=0), 3))
 
     
     # dual vars y >= 0
