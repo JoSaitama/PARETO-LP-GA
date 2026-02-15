@@ -6,7 +6,7 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm，BoundaryNorm, ListedColormap
+from matplotlib.colors import TwoSlopeNorm, BoundaryNorm, ListedColormap
 
 def compute_cum_from_ptrain(inf_dir: str, row_names: list[str], K: int = 10) -> np.ndarray:
     """
@@ -385,7 +385,7 @@ def main():
     
         plt.figure(figsize=(6,6))
         plt.scatter(xs, ys, s=20)
-        plt.plot(xline, yline, linewidth=2)
+        plt.plot(xline, yline, linewidth=2, color='red')
         plt.axhline(0, linewidth=1)
         plt.axvline(0, linewidth=1)
         plt.title(f"{mode} class-wise (Spearman≈{rho:.3f}, N={xs.size})")
@@ -394,7 +394,7 @@ def main():
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, save_name), dpi=300)
         plt.show()
-        print(mode, "class-wise Spearman approx:", rho, "N=", xs.size)
+        print(mode, "class-wise Spearman approx:", rho)
     
     
     if cum is not None:
