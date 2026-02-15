@@ -32,7 +32,7 @@ def solve_weights_lp_dual(
     rng = np.random.default_rng(seed)
     P = np.asarray(P, dtype=np.float64)
     
-    # P = -P  # DO NOT flip here for EKFAC-based P_train (already beneficial-positive)
+    P = -P  # DO NOT flip here for EKFAC-based P_train (already beneficial-positive)
     N, K = P.shape
     alpha = np.asarray(alpha, dtype=np.float64).reshape(-1)
     if alpha.size != K:
