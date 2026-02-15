@@ -35,7 +35,7 @@ def solve_weights_lp_dual(
     # debug for P scale
     p_scale = np.max(np.abs(P)) + 1e-12
     # if scale > 0:
-    P = P / scale
+    P = P / p_scale
     
     # P = -P  # DO NOT flip here for EKFAC-based P_train (already beneficial-positive)
     N, K = P.shape
