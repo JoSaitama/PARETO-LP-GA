@@ -237,7 +237,7 @@ def solve_weights_soft(P, targets, alpha, w_max=4.0, eps=1e-8):
     target_set = set(targets)
     non_t = [k for k in range(K) if k not in target_set]
 
-    score_t = (-P[:, targets].sum(axis=1)).astype(np.float32)  # beneficial for targets
+    score_t = (P[:, targets].sum(axis=1)).astype(np.float32)  # beneficial for targets
     score_nt = (P[:, non_t].sum(axis=1)).astype(np.float32) if len(non_t) else 0.0
 
     beta = 0.5
