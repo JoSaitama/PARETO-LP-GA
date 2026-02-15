@@ -274,6 +274,11 @@ def main() -> None:
                 normalize_mean_to_1=True,
             ).astype(np.float32)  # [N]
 
+            # for debug
+            w_nonzero = np.mean(w > 1e-8)
+            print(f"[LP_debug] w min/max/mean: {w.min():.4g} {w.max():.4g} {w.mean():.4g} | nz_ratio={w_nonzero:.3f}")
+
+
             # save weights for reproducibility
             w_path = os.path.join(weights_dir, f"gen{g:03d}_cand{i:03d}.npy")
             np.save(w_path, w)
