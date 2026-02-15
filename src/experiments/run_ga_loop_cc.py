@@ -94,7 +94,9 @@ def main() -> None:
     ap.add_argument("--batch_size", type=int, default=512)
     ap.add_argument("--eval_batch_size", type=int, default=1024)
     ap.add_argument("--num_workers", type=int, default=2)
-    ap.add_argument("--device", type=str, default="cuda")
+    # ap.add_argument("--device", type=str, default="cuda")
+    ap.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
+
 
     ap.add_argument("--pop", type=int, default=30)
     ap.add_argument("--gens", type=int, default=12)
@@ -114,6 +116,11 @@ def main() -> None:
     ap.add_argument("--use_amp", type=int, default=1)
 
     args = ap.parse_args()
+    # ---- device auto-selection ----
+    if args.device == "auto":
+        args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("[Device]", args.device, "| cuda_available=", torch.cuda.is_available())
+
     ensure_dir(args.out_dir)
 
     set_seed(args.seed)
@@ -170,7 +177,12 @@ def main() -> None:
     _load_ckpt_into_model(orig_e1_model, args.ckpt_orig_e1, args.device)
     orig_e1_metrics = evaluate_indexed(orig_e1_model, test_loader, cfg_eval)
     acc_orig_e1 = np.array(orig_e1_metrics["per_class_acc"], dtype=np.float32)
-    print("[CC] original epoch-(e+1) per-class:", np.round(acc_orig_e1 * 100.0, 2))
+    # print("[CC] original epoch-(e+1) per-class:", np.round(acc_orig_e1 * 100.0, 2))
+    print("[CC] ckpt_orig_e1 per-class acc (%):")
+    for k, v in enumerate(acc_orig_e1):
+        print(f"  class {k:2d}: {v*100:.2f}")
+    print(f"[CC] ckpt_orig_e1 mean acc (%): {acc_orig_e1.mean()*100:.2f}")
+
 
     population = [sample_alpha(K=K, target_classes=target_classes, rng=rng) for _ in range(int(args.pop))]
 
