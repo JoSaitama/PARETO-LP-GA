@@ -96,9 +96,9 @@ def solve_weights_lp_dual(
         y = y - eta * (Aw - b)
         y = np.maximum(y, 0.0)
     
-    print("[LP_debug] best_violation:", best_violation)
-    print("[LP_debug] y_norm:", float(np.linalg.norm(y)))
-    print("[LP_debug] selected_ratio:", float(np.mean(best_w > 0)))
+    print("[LP_debug: weight_opt] best_violation:", best_violation)
+    print("[LP_debug: weight_opt] y_norm:", float(np.linalg.norm(y)))
+    print("[LP_debug: weight_opt] selected_ratio:", float(np.mean(best_w > 0)))
     
 
     w_out = best_w.astype(np.float32)
