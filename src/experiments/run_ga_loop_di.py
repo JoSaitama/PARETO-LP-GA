@@ -289,33 +289,33 @@ def main() -> None:
                 raise ValueError("alpha shape mismatch")
 
             # ---- Algorithm 1 line 4: solve LP for w ----
-            # w = solve_weights_lp_dual(
-            #     P=P,
-            #     target_classes=target_classes,
-            #     alpha=alpha,
-            #     w_max=float(args.w_max),
-            #     steps=int(args.opt_steps),
-            #     lr=float(args.lp_lr),
-            #     seed=int(args.seed + 1000 * g + i),
-            #     tol=float(args.eps),
-            #     # normalize_mean_to_1=True,
-            #     normalize_mean_to_1=False,
-            # ).astype(np.float32)  # [N]
-
-            w, diag = solve_weights_lp_dual_paper(
-                P=P_train,
-                target_classes=targets,
+            w = solve_weights_lp_dual(
+                P=P,
+                target_classes=target_classes,
                 alpha=alpha,
-                w_max=args.w_max,
-                steps=3000,
-                lr=args.lp_lr,
-                seed=seed,
-                tol=1e-6,
-                p_scale="maxabs",
-                p_flip=False,
-                return_diag=True,
-            )
-            print("[LP] max_viol", diag.max_viol, "obj", diag.obj, "nz", diag.selected_ratio, "y_norm", diag.y_norm)
+                w_max=float(args.w_max),
+                steps=int(args.opt_steps),
+                lr=float(args.lp_lr),
+                seed=int(args.seed + 1000 * g + i),
+                tol=float(args.eps),
+                # normalize_mean_to_1=True,
+                normalize_mean_to_1=False,
+            ).astype(np.float32)  # [N]
+
+            # w, diag = solve_weights_lp_dual_paper(
+            #     P=P_train,
+            #     target_classes=targets,
+            #     alpha=alpha,
+            #     w_max=args.w_max,
+            #     steps=3000,
+            #     lr=args.lp_lr,
+            #     seed=seed,
+            #     tol=1e-6,
+            #     p_scale="maxabs",
+            #     p_flip=False,
+            #     return_diag=True,
+            # )
+            # print("[LP] max_viol", diag.max_viol, "obj", diag.obj, "nz", diag.selected_ratio, "y_norm", diag.y_norm)
 
             # for debug
             w_nonzero = np.mean(w > 1e-8)
