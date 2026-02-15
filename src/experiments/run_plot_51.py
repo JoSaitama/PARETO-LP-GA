@@ -153,12 +153,15 @@ def _plot_heatmap(mat, row_names, title, save_path, vlim=None):
     plt.figure(figsize=(size, size))
     im = plt.imshow(m, aspect="equal", cmap="RdBu_r", norm=norm)  # RdBu_r: negative->blue, positive->red
     plt.gca().set_aspect('equal', adjustable='box')
+
     
     # plt.figure(figsize=(10, max(4, 0.35 * len(row_names))))
     # im = plt.imshow(m, aspect="auto", cmap="RdBu_r", norm=norm)  
     plt.yticks(range(len(row_names)), row_names)
     plt.xticks(range(K), list(range(K)))
-    plt.colorbar(im)
+    cbar = plt.colorbar(im, fraction=0.035, pad=0.015)
+    cbar.ax.tick_params(labelsize=11)
+    # plt.colorbar(im)
     plt.title(title)
     plt.tight_layout()
     plt.savefig(save_path, dpi=200)
@@ -192,8 +195,9 @@ def _plot_cum_heatmap(mat, row_names, title, save_path, vlim=None):
     plt.yticks(range(R), row_names)
     plt.xticks(range(K), list(range(K)))
 
-    cbar = plt.colorbar(im)
-
+    # cbar = plt.colorbar(im)
+    cbar = plt.colorbar(im, fraction=0.035, pad=0.015)
+    cbar.ax.tick_params(labelsize=11)
     # 三个位置
     cbar.set_ticks([vlim[0]*0.8, 0, vlim[1]*0.8])
     cbar.set_ticklabels(["Negative", "Neutral", "Positive"])
