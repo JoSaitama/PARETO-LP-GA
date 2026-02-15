@@ -59,6 +59,20 @@ def solve_weights_lp_dual(
     print("[P_train: weight_opt] per-class sum (S):", np.round(P.sum(axis=0), 2))
     print("[P_train: weight_opt] pos_ratio:", np.round((P > 0).mean(axis=0), 3))
     print("[P_train: weight_opt] neg_ratio:", np.round((P < 0).mean(axis=0), 3))
+    # debug
+    pos_sum = np.maximum(P, 0.0).sum(axis=0)   # sum of positive entries per class
+    upper = w_max * pos_sum                    # crude upper bound on Aw_k
+    
+    # For S_k > 0, need Aw_k >= b_k > 0. If b_k > upper_k, it's impossible.
+    impossible = []
+    for k in range(K):
+        if S[k] > 0 and b[k] > upper[k] + 1e-12:
+            impossible.append((k, float(b[k]), float(upper[k]), float(S[k])))
+    
+    if impossible:
+        print("[LP_diag] impossible constraints (S_k>0 and b_k>upper_k):")
+        for k, bk, uk, sk in impossible:
+            print(f"  k={k}: b={bk:.4g}  upper={uk:.4g}  S={sk:.4g}  alpha_max≈{(uk/(sk+1e-12)):.4g}")
 
     
     # dual vars y >= 0
